@@ -6,12 +6,14 @@ import { useLoader } from "@/hooks/useLoader"
 import { getToken, setToken, removeToken, setRefreshToken, getRefreshToken, removeRefreshToken } from "@/utils/token"
 
 interface User {
-  id_usuario: string
-  nombre_usuario: string
-  correo: string
-  id_rol: string
-  nombre: string
-  twoFactorEnabled: boolean
+  id: number
+  username: string
+  email: string
+  first_name: string
+  last_name: string
+  is_staff: boolean
+  is_active: boolean
+  // Agregar campos específicos de tu modelo de usuario Django
 }
 
 interface AuthContextType {
@@ -48,11 +50,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [twoFactorPending, setTwoFactorPending] = useState(false)
-  const [tempToken, setTempToken] = useState<string | null>(null)
   const { showLoader, hideLoader } = useLoader()
 
-  // Función para refrescar el token
+  // Función para refrescar el token y obtener usuario
   const refreshUserSession = async () => {
     const refreshToken = getRefreshToken()
     if (!refreshToken) {
@@ -63,9 +63,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     try {
-      const { token, refreshToken: newRefreshToken } = await authAPI.refreshToken(refreshToken)
+      const { token } = await authAPI.refreshToken(refreshToken)
       setToken(token)
-      setRefreshToken(newRefreshToken)
+
+      // Obtener información del usuario
       const userData = await authAPI.getCurrentUser()
       setUser(userData)
       setIsAuthenticated(true)
@@ -84,23 +85,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (token) {
         try {
+          // Intentar obtener el usuario actual
           const userData = await authAPI.getCurrentUser()
           setUser(userData)
           setIsAuthenticated(true)
 
-          // Configurar un intervalo para refrescar el token periódicamente
+          // Configurar un intervalo para refrescar el token cada 4 minutos
+          // (antes de que expire a los 5 minutos)
           const refreshInterval = setInterval(
             () => {
               refreshUserSession()
             },
-            15 * 60 * 1000,
-          ) // Refrescar cada 15 minutos
+            4 * 60 * 1000, // 4 minutos
+          )
 
           return () => clearInterval(refreshInterval)
         } catch (error) {
           console.error("Error al verificar el token:", error)
-          removeToken()
-          removeRefreshToken()
+          // Intentar refrescar el token
+          await refreshUserSession()
         }
       }
 
@@ -113,77 +116,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (username: string, password: string) => {
     showLoader()
     try {
-      const { token, user, requireTwoFactor } = await authAPI.login(username, password)
+      const { token, user: userData, requireTwoFactor } = await authAPI.login(username, password)
 
       if (requireTwoFactor) {
-        // Si se requiere 2FA, guardamos el token temporal pero no establecemos la autenticación completa
-        setTempToken(token)
-        setTwoFactorPending(true)
         hideLoader()
         return { requireTwoFactor: true }
       }
 
-      // Si no se requiere 2FA o ya se ha completado, procedemos con la autenticación normal
+      // Guardar tokens
       setToken(token.accessToken)
       setRefreshToken(token.refreshToken)
-      setUser(user)
+
+      // Obtener información completa del usuario
+      const fullUserData = await authAPI.getCurrentUser()
+      setUser(fullUserData)
       setIsAuthenticated(true)
+
       hideLoader()
       return { requireTwoFactor: false }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al iniciar sesión:", error)
       hideLoader()
-      throw error
-    }
-  }
-
-  const verifyTwoFactor = async (code: string) => {
-    if (!twoFactorPending || !tempToken) {
-      throw new Error("No hay una verificación de dos factores pendiente")
-    }
-
-    showLoader()
-    try {
-      const { token, user } = await authAPI.verifyTwoFactor(tempToken, code)
-      setToken(token.accessToken)
-      setRefreshToken(token.refreshToken)
-      setUser(user)
-      setIsAuthenticated(true)
-      setTwoFactorPending(false)
-      setTempToken(null)
-    } catch (error) {
-      console.error("Error al verificar código de dos factores:", error)
-      throw error
-    } finally {
-      hideLoader()
-    }
-  }
-
-  const enableTwoFactor = async () => {
-    showLoader()
-    try {
-      const { secret, qrCodeUrl } = await authAPI.enableTwoFactor()
-      return { secret, qrCodeUrl }
-    } catch (error) {
-      console.error("Error al habilitar autenticación de dos factores:", error)
-      throw error
-    } finally {
-      hideLoader()
-    }
-  }
-
-  const disableTwoFactor = async (code: string) => {
-    showLoader()
-    try {
-      await authAPI.disableTwoFactor(code)
-      // Actualizar el usuario para reflejar que 2FA está deshabilitado
-      const userData = await authAPI.getCurrentUser()
-      setUser(userData)
-    } catch (error) {
-      console.error("Error al deshabilitar autenticación de dos factores:", error)
-      throw error
-    } finally {
-      hideLoader()
+      throw new Error(error.message || "Error de autenticación")
     }
   }
 
@@ -191,9 +145,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     showLoader()
     try {
       await authAPI.register(userData)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al registrar usuario:", error)
-      throw error
+      throw new Error(error.message || "Error en el registro")
     } finally {
       hideLoader()
     }
@@ -204,6 +158,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     removeRefreshToken()
     setUser(null)
     setIsAuthenticated(false)
+  }
+
+  // Funciones de 2FA (implementar cuando esté listo en Django)
+  const verifyTwoFactor = async (code: string) => {
+    throw new Error("2FA no implementado aún")
+  }
+
+  const enableTwoFactor = async () => {
+    throw new Error("2FA no implementado aún")
+  }
+
+  const disableTwoFactor = async (code: string) => {
+    throw new Error("2FA no implementado aún")
   }
 
   return (

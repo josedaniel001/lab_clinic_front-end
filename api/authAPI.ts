@@ -1,95 +1,101 @@
-import {
-  mockLogin,
-  mockRegister,
-  mockGetCurrentUser,
-  mockRefreshToken,
-  mockVerifyTwoFactor,
-  mockEnableTwoFactor,
-  mockDisableTwoFactor,
-} from "./mockData"
+import api from "./api"
 
 export const authAPI = {
   /**
-   * Inicia sesión con nombre de usuario y contraseña
+   * Inicia sesión con username y password usando Django JWT
    */
   login: async (username: string, password: string) => {
-    // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/auth/login', { username, password })
-    // return response.data
+    try {
+      const response = await api.post("/token/", {
+        username,
+        password,
+      })
 
-    // Simulación con datos de prueba
-    return mockLogin(username, password)
-  },
+      const { access, refresh } = response.data
 
-  /**
-   * Registra un nuevo usuario
-   */
-  register: async (userData: any) => {
-    // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/auth/register', userData)
-    // return response.data
-
-    // Simulación con datos de prueba
-    return mockRegister(userData)
+      return {
+        token: {
+          accessToken: access,
+          refreshToken: refresh,
+        },
+        user: null, // Lo obtendremos después con getCurrentUser
+        requireTwoFactor: false,
+      }
+    } catch (error: any) {
+      console.error("Error en login:", error)
+      throw new Error(error.response?.data?.detail || "Error de autenticación")
+    }
   },
 
   /**
    * Obtiene la información del usuario actual
    */
   getCurrentUser: async () => {
-    // En un entorno real, esto sería una llamada a la API
-    // const response = await api.get('/auth/me')
-    // return response.data
-
-    // Simulación con datos de prueba
-    return mockGetCurrentUser()
+    try {
+      // Asumiendo que tienes un endpoint para obtener el usuario actual
+      const response = await api.get("/auth/me/")
+      return response.data
+    } catch (error: any) {
+      console.error("Error al obtener usuario:", error)
+      throw error
+    }
   },
 
   /**
    * Refresca el token de acceso usando el refresh token
    */
   refreshToken: async (refreshToken: string) => {
-    // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/auth/refresh', { refreshToken })
-    // return response.data
+    try {
+      const response = await api.post("/token/refresh/", {
+        refresh: refreshToken,
+      })
 
-    // Simulación con datos de prueba
-    return mockRefreshToken(refreshToken)
+      const { access } = response.data
+
+      return {
+        token: access,
+        refreshToken: refreshToken, // El refresh token se mantiene igual
+      }
+    } catch (error: any) {
+      console.error("Error al refrescar token:", error)
+      throw new Error("Token de refresco inválido")
+    }
+  },
+
+  /**
+   * Registra un nuevo usuario
+   */
+  register: async (userData: any) => {
+    try {
+      const response = await api.post("/auth/register/", userData)
+      return response.data
+    } catch (error: any) {
+      console.error("Error en registro:", error)
+      throw new Error(error.response?.data?.detail || "Error en el registro")
+    }
   },
 
   /**
    * Verifica el código de autenticación de dos factores
    */
   verifyTwoFactor: async (tempToken: string, code: string) => {
-    // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/auth/verify-2fa', { tempToken, code })
-    // return response.data
-
-    // Simulación con datos de prueba
-    return mockVerifyTwoFactor(tempToken, code)
+    // Implementar cuando tengas 2FA en Django
+    throw new Error("2FA no implementado aún")
   },
 
   /**
-   * Habilita la autenticación de dos factores para el usuario actual
+   * Habilita la autenticación de dos factores
    */
   enableTwoFactor: async () => {
-    // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/auth/enable-2fa')
-    // return response.data
-
-    // Simulación con datos de prueba
-    return mockEnableTwoFactor()
+    // Implementar cuando tengas 2FA en Django
+    throw new Error("2FA no implementado aún")
   },
 
   /**
-   * Deshabilita la autenticación de dos factores para el usuario actual
+   * Deshabilita la autenticación de dos factores
    */
   disableTwoFactor: async (code: string) => {
-    // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/auth/disable-2fa', { code })
-    // return response.data
-
-    // Simulación con datos de prueba
-    return mockDisableTwoFactor(code)
+    // Implementar cuando tengas 2FA en Django
+    throw new Error("2FA no implementado aún")
   },
 }

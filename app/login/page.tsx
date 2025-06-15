@@ -1,16 +1,27 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
 import { useLoader } from "@/hooks/useLoader"
 import { useNotification } from "@/hooks/useNotification"
-import { Box, Button, Container, TextField, Typography, InputAdornment, IconButton, Paper } from "@mui/material"
-import { Visibility, VisibilityOff, Login as LoginIcon } from "@mui/icons-material"
+import {
+  Box,
+  Button,
+  Container,
+  TextField,
+  Typography,
+  InputAdornment,
+  IconButton,
+  Paper,
+  Alert,
+  Collapse,
+} from "@mui/material"
+import { Visibility, VisibilityOff, Login as LoginIcon, Settings } from "@mui/icons-material"
 import Image from "next/image"
+import NetworkDiagnostic from "@/components/dev/NetworkDiagnostic"
 
 export default function Login() {
   const router = useRouter()
@@ -22,6 +33,8 @@ export default function Login() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState({ username: "", password: "" })
+  const [networkError, setNetworkError] = useState("")
+  const [showDiagnostic, setShowDiagnostic] = useState(false)
 
   const validateForm = () => {
     let isValid = true
@@ -43,6 +56,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setNetworkError("")
 
     if (!validateForm()) return
 
@@ -52,15 +66,22 @@ export default function Login() {
       const { requireTwoFactor } = await login(username, password)
 
       if (requireTwoFactor) {
-        // Si se requiere verificación de dos factores, redirigir a la página correspondiente
         router.push("/verificar-2fa")
       } else {
-        // Si no se requiere 2FA, continuar normalmente
         showNotification("Inicio de sesión exitoso", "success")
         router.push("/dashboard")
       }
-    } catch (error) {
-      showNotification("Credenciales incorrectas", "error")
+    } catch (error: any) {
+      console.error("Error en login:", error)
+
+      if (error.message.includes("conectar con el servidor")) {
+        setNetworkError(error.message)
+        setShowDiagnostic(true)
+      } else if (error.message.includes("Timeout")) {
+        setNetworkError("El servidor tardó demasiado en responder. Verifica tu conexión.")
+      } else {
+        showNotification(error.message || "Error de autenticación", "error")
+      }
     } finally {
       hideLoader()
     }
@@ -105,6 +126,33 @@ export default function Login() {
             <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
               Ingrese sus credenciales para acceder al sistema
             </Typography>
+
+            {/* Error de red */}
+            <Collapse in={!!networkError} sx={{ width: "100%", mb: 2 }}>
+              <Alert
+                severity="error"
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => setShowDiagnostic(!showDiagnostic)}
+                    startIcon={<Settings />}
+                  >
+                    Diagnóstico
+                  </Button>
+                }
+              >
+                <Typography variant="body2" fontWeight="bold">
+                  Error de Conexión
+                </Typography>
+                <Typography variant="body2">{networkError}</Typography>
+              </Alert>
+            </Collapse>
+
+            {/* Panel de diagnóstico */}
+            <Collapse in={showDiagnostic} sx={{ width: "100%", mb: 2 }}>
+              <NetworkDiagnostic />
+            </Collapse>
 
             <Box component="form" onSubmit={handleSubmit} sx={{ width: "100%" }}>
               <TextField
