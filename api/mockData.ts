@@ -75,7 +75,109 @@ const permisos = [
   { id: "28", nombre: "eliminar_rol", vista_modulo: "Administración", activo: true },
   { id: "29", nombre: "editar_permisos", vista_modulo: "Administración", activo: true },
   { id: "30", nombre: "ver_notificaciones", vista_modulo: "Dashboard", activo: true },
+  { id: "31", nombre: "ver_modulo_facturacion", vista_modulo: "Facturación", activo: true },
+  { id: "32", nombre: "ver_facturas", vista_modulo: "Facturación", activo: true },
+  { id: "33", nombre: "ver_reportes_facturacion", vista_modulo: "Facturación", activo: true },
 ]
+
+// 🎯 PERMISOS POR ROL - AQUÍ ESTÁ LA CONFIGURACIÓN ESPECÍFICA
+const permisosPorRol = {
+  // 👑 ADMINISTRADOR - Acceso completo a todo
+  "1": [
+    "ver_dashboard",
+    "ver_notificaciones",
+    // Recepción - Acceso completo
+    "ver_modulo_recepcion",
+    "ver_pacientes",
+    "crear_paciente",
+    "editar_paciente",
+    "eliminar_paciente",
+    "ver_medicos",
+    "crear_medico",
+    "editar_medico",
+    "eliminar_medico",
+    "ver_ordenes",
+    "crear_orden",
+    "eliminar_orden",
+    // Laboratorio - Acceso completo
+    "ver_modulo_laboratorio",
+    "ver_resultados",
+    "validar_resultados",
+    "ver_inventario",
+    // Reportes - Acceso completo
+    "ver_modulo_reportes",
+    "ver_estadisticas",
+    // Facturación - Acceso completo
+    "ver_modulo_facturacion",
+    "ver_facturas",
+    "ver_reportes_facturacion",
+    // Administración - Acceso completo
+    "ver_modulo_admin",
+    "ver_usuarios",
+    "crear_usuario",
+    "editar_usuario",
+    "eliminar_usuario",
+    "ver_roles",
+    "crear_rol",
+    "editar_rol",
+    "eliminar_rol",
+    "editar_permisos",
+  ],
+
+  // 🧪 BIOQUÍMICO - Enfocado en laboratorio y resultados
+  "2": [
+    "ver_dashboard",
+    "ver_notificaciones",
+    // Recepción - Solo lectura de pacientes y órdenes
+    "ver_modulo_recepcion",
+    "ver_pacientes", // Solo ver, no crear/editar/eliminar
+    "ver_medicos", // Solo ver
+    "ver_ordenes", // Solo ver
+    // Laboratorio - Acceso completo
+    "ver_modulo_laboratorio",
+    "ver_resultados",
+    "validar_resultados", // Puede validar resultados
+    "ver_inventario",
+    // Reportes - Solo estadísticas
+    "ver_modulo_reportes",
+    "ver_estadisticas",
+  ],
+
+  // 📋 RECEPCIONISTA - Enfocado en recepción y pacientes
+  "3": [
+    "ver_dashboard",
+    "ver_notificaciones",
+    // Recepción - Acceso completo
+    "ver_modulo_recepcion",
+    "ver_pacientes",
+    "crear_paciente",
+    "editar_paciente", // No puede eliminar
+    "ver_medicos",
+    "crear_medico",
+    "editar_medico", // No puede eliminar
+    "ver_ordenes",
+    "crear_orden", // No puede eliminar
+    // Laboratorio - Solo ver resultados (no validar)
+    "ver_modulo_laboratorio",
+    "ver_resultados", // Solo ver, no validar
+    // Reportes - Solo estadísticas básicas
+    "ver_modulo_reportes",
+    "ver_estadisticas",
+  ],
+
+  // 🔬 TÉCNICO DE LABORATORIO - Solo laboratorio
+  "4": [
+    "ver_dashboard",
+    "ver_notificaciones",
+    // Recepción - Solo ver órdenes
+    "ver_modulo_recepcion",
+    "ver_ordenes", // Solo ver órdenes asignadas
+    // Laboratorio - Procesar pero no validar
+    "ver_modulo_laboratorio",
+    "ver_resultados", // Puede ver y procesar, pero no validar
+    "ver_inventario",
+  ],
+}
 
 // Pacientes
 const pacientes = [
@@ -447,9 +549,13 @@ export const mockGetPermisos = () => {
   return permisos
 }
 
+// 🎯 FUNCIÓN CORREGIDA - Ahora filtra permisos por rol específico
 export const mockGetPermisosByRol = (rolId: string) => {
-  // En un entorno real, aquí se filtrarían los permisos por rol
-  return permisos
+  // Obtener los nombres de permisos para este rol específico
+  const permisosDelRol = permisosPorRol[rolId as keyof typeof permisosPorRol] || []
+
+  // Filtrar y devolver solo los permisos que tiene este rol
+  return permisos.filter((permiso) => permisosDelRol.includes(permiso.nombre) && permiso.activo)
 }
 
 export const mockSavePermisos = (rolId: string, permisosData: any) => {

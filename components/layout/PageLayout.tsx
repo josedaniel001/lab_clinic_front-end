@@ -192,7 +192,7 @@ export function PageLayout({
                     size="sm"
                     onClick={onRefresh}
                     disabled={isRefreshing}
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                    className="gradient-primary hover:gradient-success text-white border-white/30"
                   >
                     <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
                     {isRefreshing ? "Actualizando..." : "Actualizar"}

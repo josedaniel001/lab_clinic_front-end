@@ -80,9 +80,10 @@ export default function PerfilPage() {
 
   useEffect(() => {
     if (user) {
+      console.log("datos del user:"+JSON.stringify(user, null, 2))      
       setPerfilData({
-        nombre: user.nombre || "",
-        correo: user.correo || "",
+        nombre: user.first_name || user.last_name || "",
+        correo: user.email || "",
         telefono: "", // Asumimos que no tenemos este dato inicialmente
       })
     }
@@ -251,13 +252,14 @@ export default function PerfilPage() {
                   fontSize: "3rem",
                 }}
               >
-                {user?.nombre_usuario?.charAt(0).toUpperCase() || <PersonIcon fontSize="large" />}
+                {user?.first_name && user?.last_name? user?.first_name?.charAt(0).toUpperCase()
+                 : <PersonIcon fontSize="large" />}
               </Avatar>
               <Typography variant="h5" gutterBottom>
-                {user?.nombre_usuario || "Usuario"}
+                {user?.first_name && user?.last_name? `${user.first_name} ${user.last_name}` : "Usuario"}
               </Typography>
               <Typography variant="body1" color="text.secondary" gutterBottom>
-                {user?.correo || "correo@ejemplo.com"}
+                {user?.email || "correo@ejemplo.com"}
               </Typography>
               <Chip label={user?.rol || "Usuario"} color="primary" size="small" sx={{ mt: 1 }} />
             </CardContent>

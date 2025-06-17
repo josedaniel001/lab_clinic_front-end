@@ -1,47 +1,41 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
-import { usePermissions } from "@/hooks/usePermissions"
+import { usePathname } from "next/navigation"
+import { useAuth } from "@/contexts/AuthContext"
+import { useTheme } from "@/contexts/ThemeContext"
 import Link from "next/link"
-import {
-  Box,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Collapse,
-  Divider,
-  Toolbar,
-  useTheme,
-  useMediaQuery,
-} from "@mui/material"
-import {
-  Dashboard,
-  Person,
-  Assignment,
-  Science,
-  BarChart,
-  Settings,
-  ExpandLess,
-  ExpandMore,
-  People,
-  Security,
-  Biotech,
-  MedicalServices,
-  Inventory,
-  LocalHospital,
-  Receipt,
-} from "@mui/icons-material"
 import Image from "next/image"
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  Sun,
+  Moon,
+  LayoutDashboard,
+  Users,
+  ClipboardList,
+  FlaskConical,
+  BarChart3,
+  Settings,
+  UserCheck,
+  Stethoscope,
+  TestTube,
+  Package,
+  Receipt,
+  TrendingUp,
+  Shield,
+  Hospital,
+  User,
+} from "lucide-react"
+import { Biotech, Engineering } from "@mui/icons-material"
 
 interface SidebarProps {
-  open: boolean
-  toggleDrawer: () => void
+  collapsed: boolean
+  toggleCollapsed: () => void
+  isMobileOpen: boolean
+  toggleMobile: () => void
 }
 
 interface MenuItem {
@@ -52,300 +46,422 @@ interface MenuItem {
   children?: MenuItem[]
 }
 
-export default function Sidebar({ open, toggleDrawer }: SidebarProps) {
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"))
+function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: SidebarProps) {
+  const { isDarkMode, toggleTheme } = useTheme()
   const pathname = usePathname()
-  const router = useRouter()
-  const { hasPermission } = usePermissions()
+  const { user, isAuthenticated } = useAuth()
 
   const [openSubMenus, setOpenSubMenus] = useState<{ [key: string]: boolean }>({})
 
+  // Función para verificar permisos
+  const hasPermission = (permission: string): boolean => {
+    if (!isAuthenticated || !user) return false
+    if (user.is_staff) return true
+    if (user.custom_permissions?.includes(permission)) return true
+    if (user.permissions?.includes(permission)) return true
+    return false
+  }
+
   const handleSubMenuToggle = (title: string) => {
-    setOpenSubMenus({
-      ...openSubMenus,
-      [title]: !openSubMenus[title],
-    })
+    if (collapsed) return
+    setOpenSubMenus((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }))
   }
 
-  const handleNavigate = (path: string) => {
-    if (path) {
-      router.push(path)
-      if (isMobile) {
-        toggleDrawer()
-      }
-    }
-  }
-
-  const isActive = (path: string) => {
-    return pathname === path
-  }
+  const isActive = (path: string) => pathname === path
 
   const menuItems: MenuItem[] = [
     {
       title: "Dashboard",
       path: "/dashboard",
-      icon: <Dashboard />,
+      icon: <LayoutDashboard size={20} />,
       permission: "ver_dashboard",
     },
     {
       title: "Recepción",
-      icon: <MedicalServices />,
+      icon: <Hospital size={20} />,
       permission: "ver_modulo_recepcion",
       children: [
         {
           title: "Pacientes",
           path: "/recepcion/pacientes",
-          icon: <Person />,
+          icon: <Users size={18} />,
           permission: "ver_pacientes",
         },
         {
           title: "Médicos",
           path: "/recepcion/medicos",
-          icon: <LocalHospital />,
+          icon: <Stethoscope size={18} />,
           permission: "ver_medicos",
         },
         {
           title: "Órdenes",
           path: "/recepcion/ordenes",
-          icon: <Assignment />,
+          icon: <ClipboardList size={18} />,
           permission: "ver_ordenes",
         },
       ],
     },
     {
       title: "Laboratorio",
-      icon: <Science />,
+      icon: <FlaskConical size={20} />,
       permission: "ver_modulo_laboratorio",
       children: [
         {
           title: "Resultados",
           path: "/laboratorio/resultados",
-          icon: <Biotech />,
+          icon: <TestTube size={18} />,
           permission: "ver_resultados",
         },
         {
           title: "Inventario",
           path: "/laboratorio/inventario",
-          icon: <Inventory />,
+          icon: <Package size={18} />,
           permission: "ver_inventario",
+        },
+        {
+          title: "Exámenes",
+          path: "/laboratorio/examenes",
+          icon: <FlaskConical size={18} />,
+          permission: "ver_examenes",
         },
       ],
     },
     {
-      title: "Médicos",
-      path: "/medicos",
-      icon: <LocalHospital />,
-      permission: "ver_medicos",
-    },
-    {
       title: "Facturación",
-      icon: <Receipt />,
+      icon: <Receipt size={20} />,
       permission: "ver_modulo_facturacion",
       children: [
         {
           title: "Facturas",
           path: "/facturacion/facturas",
-          icon: <Receipt />,
+          icon: <Receipt size={18} />,
           permission: "ver_facturas",
         },
         {
           title: "Reportes",
           path: "/facturacion/reportes",
-          icon: <BarChart />,
+          icon: <TrendingUp size={18} />,
           permission: "ver_reportes_facturacion",
         },
       ],
     },
     {
       title: "Reportes",
-      icon: <BarChart />,
+      icon: <BarChart3 size={20} />,
       permission: "ver_modulo_reportes",
       children: [
         {
           title: "Estadísticas",
           path: "/reportes/estadisticas",
-          icon: <BarChart />,
+          icon: <BarChart3 size={18} />,
           permission: "ver_estadisticas",
         },
       ],
     },
     {
       title: "Administración",
-      icon: <Settings />,
+      icon: <Settings size={20} />,
       permission: "ver_modulo_admin",
       children: [
         {
           title: "Usuarios",
           path: "/admin/usuarios",
-          icon: <People />,
+          icon: <Users size={18} />,
           permission: "ver_usuarios",
         },
         {
           title: "Roles",
           path: "/admin/roles",
-          icon: <Security />,
+          icon: <Shield size={18} />,
+          permission: "ver_roles",
+        },
+      ],
+    },
+    {
+      title: "Configuración",
+      icon: <Engineering size={20} />,
+      permission: "ver_modulo_configuracion",
+      children: [
+        {
+          title: "General",
+          path: "/configuracion",
+          icon: <Biotech size={18} />,
+          permission: "ver_usuarios",
+        },
+        {
+          title: "Notificaciones",
+          path: "/configuracion/notificaciones",
+          icon: <Engineering size={18} />,
           permission: "ver_roles",
         },
       ],
     },
   ]
 
-  // Inicializar submenús abiertos basados en la ruta actual
+  // Inicializar submenús abiertos
   useEffect(() => {
-    const newOpenSubMenus: { [key: string]: boolean } = {}
-
-    menuItems.forEach((item) => {
-      if (item.children) {
-        const isChildActive = item.children.some((child) => pathname.startsWith(child.path || ""))
-        if (isChildActive) {
-          newOpenSubMenus[item.title] = true
+    if (!collapsed) {
+      const newOpenSubMenus: { [key: string]: boolean } = {}
+      menuItems.forEach((item) => {
+        if (item.children) {
+          const isChildActive = item.children.some((child) => pathname.startsWith(child.path || ""))
+          if (isChildActive) {
+            newOpenSubMenus[item.title] = true
+          }
         }
-      }
-    })
-
-    setOpenSubMenus(newOpenSubMenus)
-  }, [pathname])
+      })
+      setOpenSubMenus(newOpenSubMenus)
+    }
+  }, [pathname, collapsed])
 
   const renderMenuItems = (items: MenuItem[]) => {
     return items.map((item) => {
-      // Si el elemento requiere un permiso y el usuario no lo tiene, no lo mostramos
       if (item.permission && !hasPermission(item.permission)) {
         return null
       }
 
       if (item.children) {
-        return (
-          <Box key={item.title}>
-            <ListItem disablePadding>
-              <ListItemButton onClick={() => handleSubMenuToggle(item.title)}>
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.title} />
-                {openSubMenus[item.title] ? <ExpandLess /> : <ExpandMore />}
-              </ListItemButton>
-            </ListItem>
-            <Collapse in={openSubMenus[item.title]} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {item.children.map((child) => {
-                  if (child.permission && !hasPermission(child.permission)) {
-                    return null
-                  }
+        const visibleChildren = item.children.filter((child) => {
+          if (child.permission && !hasPermission(child.permission)) {
+            return false
+          }
+          return true
+        })
 
+        if (visibleChildren.length === 0) {
+          return null
+        }
+
+        const isOpen = openSubMenus[item.title]
+        const hasActiveChild = visibleChildren.some((child) => child.path && pathname.startsWith(child.path))
+
+        return (
+          <div key={item.title} className="mb-1">
+            <button
+              onClick={() => handleSubMenuToggle(item.title)}
+              className={`
+                w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left
+                transition-all duration-200 group
+                ${
+                  hasActiveChild
+                    ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                }
+                ${collapsed ? "justify-center" : ""}
+              `}
+              title={collapsed ? item.title : undefined}
+            >
+              <div className="flex items-center">
+                <div
+                  className={`${hasActiveChild ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400"}`}
+                >
+                  {item.icon}
+                </div>
+                {!collapsed && <span className="ml-3 font-medium">{item.title}</span>}
+              </div>
+              {!collapsed && (
+                <div className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
+                  <ChevronDown size={16} />
+                </div>
+              )}
+            </button>
+
+            {!collapsed && isOpen && (
+              <div className="mt-1 ml-4 space-y-1">
+                {visibleChildren.map((child) => {
+                  const isChildActive = child.path ? isActive(child.path) : false
                   return (
-                    <ListItem key={child.title} disablePadding>
-                      <Link
-                        href={child.path || "#"}
-                        passHref
-                        style={{ textDecoration: "none", width: "100%", color: "inherit" }}
+                    <Link
+                      key={child.title}
+                      href={child.path || "#"}
+                      className={`
+                        flex items-center px-3 py-2 rounded-lg text-sm
+                        transition-all duration-200 group
+                        ${
+                          isChildActive
+                            ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200"
+                        }
+                      `}
+                    >
+                      <div
+                        className={`${isChildActive ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`}
                       >
-                        <ListItemButton
-                          component="a"
-                          selected={child.path ? isActive(child.path) : false}
-                          sx={{
-                            pl: 4,
-                            "&.Mui-selected": {
-                              backgroundColor: "primary.light",
-                              "&:hover": {
-                                backgroundColor: "primary.light",
-                              },
-                            },
-                          }}
-                        >
-                          <ListItemIcon>{child.icon}</ListItemIcon>
-                          <ListItemText primary={child.title} />
-                        </ListItemButton>
-                      </Link>
-                    </ListItem>
+                        {child.icon}
+                      </div>
+                      <span className="ml-3">{child.title}</span>
+                    </Link>
                   )
                 })}
-              </List>
-            </Collapse>
-          </Box>
+              </div>
+            )}
+          </div>
         )
       }
 
+      const isItemActive = item.path ? isActive(item.path) : false
+
       return (
-        <ListItem key={item.title} disablePadding>
-          <Link href={item.path || "#"} passHref style={{ textDecoration: "none", width: "100%", color: "inherit" }}>
-            <ListItemButton
-              component="a"
-              selected={item.path ? isActive(item.path) : false}
-              sx={{
-                "&.Mui-selected": {
-                  backgroundColor: "primary.light",
-                  "&:hover": {
-                    backgroundColor: "primary.light",
-                  },
-                },
-              }}
+        <div key={item.title} className="mb-1">
+          <Link
+            href={item.path || "#"}
+            className={`
+              flex items-center px-3 py-2.5 rounded-lg
+              transition-all duration-200 group
+              ${
+                isItemActive
+                  ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }
+              ${collapsed ? "justify-center" : ""}
+            `}
+            title={collapsed ? item.title : undefined}
+          >
+            <div
+              className={`${isItemActive ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400"}`}
             >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.title} />
-            </ListItemButton>
+              {item.icon}
+            </div>
+            {!collapsed && <span className="ml-3 font-medium">{item.title}</span>}
           </Link>
-        </ListItem>
+        </div>
       )
     })
   }
 
-  const drawerWidth = 240
+  const sidebarContent = (
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
+      {/* Header */}
+      <div
+        className={`flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 ${collapsed ? "px-2" : ""}`}
+      >
+        {!collapsed && (
+          <Link href="/dashboard" className="flex items-center">
+            <div className="relative w-32 h-8">
+              <Image src="/logo-labofutura.png" alt="LaboFutura Logo" fill className="object-contain" />
+            </div>
+          </Link>
+        )}
 
-  const drawer = (
-    <>
-      <Toolbar sx={{ display: "flex", justifyContent: "center", py: 1 }}>
-        <Link href="/dashboard" passHref>
-          <Box sx={{ width: "180px", height: "60px", position: "relative", cursor: "pointer" }}>
-            <Image src="/logo-labofutura.png" alt="LaboFutura Logo" fill style={{ objectFit: "contain" }} />
-          </Box>
-        </Link>
-      </Toolbar>
-      <Divider />
-      <List>{renderMenuItems(menuItems)}</List>
-    </>
+        <button
+          onClick={toggleCollapsed}
+          className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          title={collapsed ? "Expandir sidebar" : "Colapsar sidebar"}
+        >
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2">{renderMenuItems(menuItems)}</div>
+
+      {/* User Profile Section */}
+      {isAuthenticated && user && (
+        <div className={`p-4 border-t border-gray-200 dark:border-gray-800 ${collapsed ? "px-2" : ""}`}>
+          {collapsed ? (
+           <Link
+                href="/perfil"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                > <div
+              className="flex items-center justify-center p-2 rounded-lg bg-gray-100 dark:bg-gray-800"
+              title={`${user.display_name || user.username} - ${user.role_display || user.role}`}
+            >
+              <User size={20} className="text-gray-600 dark:text-gray-400" />
+            </div></Link>
+          ) : ( 
+            <Link
+                href="/perfil"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+            <div className="flex items-center space-x-3 p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">
+                    {(user.first_name?.[0] || user.username?.[0] || "U").toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {user.display_name || user.first_name || user.username}
+                </p>                
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {user.role_display || user.role || "Usuario"}
+                </p>              
+              </div>
+            </div>
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* Theme Toggle */}
+      <div className={`p-4 border-t border-gray-200 dark:border-gray-800 ${collapsed ? "px-2" : ""}`}>
+        {collapsed ? (
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            title={`Cambiar a modo ${isDarkMode ? "claro" : "oscuro"}`}
+          >
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+              {isDarkMode ? <Moon size={16} /> : <Sun size={16} />}
+              <span>{isDarkMode ? "Modo Oscuro" : "Modo Claro"}</span>
+            </div>
+            <button
+              onClick={toggleTheme}
+              className={`
+                relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                ${isDarkMode ? "bg-blue-600" : "bg-gray-200"}
+              `}
+            >
+              <span
+                className={`
+                  inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                  ${isDarkMode ? "translate-x-6" : "translate-x-1"}
+                `}
+              />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   )
 
   return (
-    <Box component="nav" sx={{ width: { sm: open ? drawerWidth : 0 }, flexShrink: { sm: 0 } }}>
-      {/* Drawer móvil */}
-      {isMobile ? (
-        <Drawer
-          variant="temporary"
-          open={open}
-          onClose={toggleDrawer}
-          ModalProps={{
-            keepMounted: true, // Mejor rendimiento en dispositivos móviles
-          }}
-          sx={{
-            display: { xs: "block", sm: "none" },
-            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth },
-          }}
-        >
-          {drawer}
-        </Drawer>
-      ) : (
-        // Drawer de escritorio
-        <Drawer
-          variant="permanent"
-          open={open}
-          sx={{
-            display: { xs: "none", sm: "block" },
-            "& .MuiDrawer-paper": {
-              boxSizing: "border-box",
-              width: drawerWidth,
-              borderRight: "1px solid rgba(0, 0, 0, 0.12)",
-              transition: (theme) =>
-                theme.transitions.create("width", {
-                  easing: theme.transitions.easing.sharp,
-                  duration: theme.transitions.duration.enteringScreen,
-                }),
-              overflowX: "hidden",
-              width: open ? drawerWidth : 0,
-            },
-          }}
-        >
-          {drawer}
-        </Drawer>
-      )}
-    </Box>
+    <>
+      {/* Mobile Overlay */}
+      {isMobileOpen && <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={toggleMobile} />}
+
+      {/* Mobile Sidebar */}
+      <div
+        className={`
+          fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-in-out lg:hidden
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+      >
+        {sidebarContent}
+      </div>
+
+      {/* Desktop Sidebar */}
+      <div
+        className={`
+          hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-30
+          transition-all duration-300 ease-in-out
+          ${collapsed ? "lg:w-16" : "lg:w-72"}
+        `}
+      >
+        {sidebarContent}
+      </div>
+    </>
   )
 }
+
+export default Sidebar
