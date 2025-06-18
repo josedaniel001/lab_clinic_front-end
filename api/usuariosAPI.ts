@@ -1,16 +1,18 @@
-import { mockGetUsuarios, mockCreateUsuario, mockUpdateUsuario, mockDeleteUsuario } from "./mockData"
+// import { mockGetUsuarios, mockCreateUsuario, mockUpdateUsuario, mockDeleteUsuario } from "./mockData" // Mock data removed
+import api from "../api" // API instance imported from ../api
 
 export const usuariosAPI = {
   /**
    * Obtiene todos los usuarios
    */
-  getUsuarios: async () => {
+  getUsuarios: async (page?: number) => { // Added optional page parameter
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.get('/usuarios')
-    // return response.data
+    const url = page ? `/usuarios/?page=${page}` : "/usuarios/" // Conditional URL with trailing slash
+    const response = await api.get(url)
+    return response.data
 
     // Simulación con datos de prueba
-    return mockGetUsuarios()
+    // return mockGetUsuarios() // Mock data removed
   },
 
   /**
@@ -18,11 +20,11 @@ export const usuariosAPI = {
    */
   createUsuario: async (userData: any) => {
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/usuarios', userData)
-    // return response.data
+    const response = await api.post('/usuarios/', userData) // Added trailing slash
+    return response.data
 
     // Simulación con datos de prueba
-    return mockCreateUsuario(userData)
+    // return mockCreateUsuario(userData) // Mock data removed
   },
 
   /**
@@ -30,11 +32,11 @@ export const usuariosAPI = {
    */
   updateUsuario: async (id: string, userData: any) => {
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.put(`/usuarios/${id}`, userData)
-    // return response.data
+    const response = await api.put(`/usuarios/${id}/`, userData) // Added trailing slash
+    return response.data
 
     // Simulación con datos de prueba
-    return mockUpdateUsuario(id, userData)
+    // return mockUpdateUsuario(id, userData) // Mock data removed
   },
 
   /**
@@ -42,10 +44,10 @@ export const usuariosAPI = {
    */
   deleteUsuario: async (id: string) => {
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.delete(`/usuarios/${id}`)
-    // return response.data
+    const response = await api.delete(`/usuarios/${id}/`) // Added trailing slash
+    return response.data
 
     // Simulación con datos de prueba
-    return mockDeleteUsuario(id)
+    // return mockDeleteUsuario(id) // Mock data removed
   },
 }

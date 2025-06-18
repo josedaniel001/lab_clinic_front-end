@@ -1,16 +1,18 @@
-import { mockGetPacientes, mockCreatePaciente, mockUpdatePaciente, mockDeletePaciente } from "./mockData"
+// import { mockGetPacientes, mockCreatePaciente, mockUpdatePaciente, mockDeletePaciente } from "./mockData" // Mock data removed
+import api from "./api" // Assuming api is imported from a local file
 
 export const pacientesAPI = {
   /**
    * Obtiene todos los pacientes
    */
-  getPacientes: async () => {
+  getPacientes: async (page?: number) => { // Added optional page parameter
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.get('/pacientes')
-    // return response.data
+    const url = page ? `/pacientes/?page=${page}` : "/pacientes/" // Conditional URL
+    const response = await api.get(url)
+    return response.data
 
     // Simulación con datos de prueba
-    return mockGetPacientes()
+    // return mockGetPacientes() // Mock data removed
   },
 
   /**
@@ -18,11 +20,11 @@ export const pacientesAPI = {
    */
   createPaciente: async (pacienteData: any) => {
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/pacientes', pacienteData)
-    // return response.data
+    const response = await api.post('/pacientes/', pacienteData) // Added / at the end of the URL
+    return response.data
 
     // Simulación con datos de prueba
-    return mockCreatePaciente(pacienteData)
+    // return mockCreatePaciente(pacienteData) // Mock data removed
   },
 
   /**
@@ -30,11 +32,11 @@ export const pacientesAPI = {
    */
   updatePaciente: async (id: string, pacienteData: any) => {
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.put(`/pacientes/${id}`, pacienteData)
-    // return response.data
+    const response = await api.put(`/pacientes/${id}/`, pacienteData) // Added / at the end of the URL
+    return response.data
 
     // Simulación con datos de prueba
-    return mockUpdatePaciente(id, pacienteData)
+    // return mockUpdatePaciente(id, pacienteData) // Mock data removed
   },
 
   /**
@@ -42,10 +44,10 @@ export const pacientesAPI = {
    */
   deletePaciente: async (id: string) => {
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.delete(`/pacientes/${id}`)
-    // return response.data
+    const response = await api.delete(`/pacientes/${id}/`) // Added / at the end of the URL
+    return response.data
 
     // Simulación con datos de prueba
-    return mockDeletePaciente(id)
+    // return mockDeletePaciente(id) // Mock data removed
   },
 }

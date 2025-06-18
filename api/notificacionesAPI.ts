@@ -1,3 +1,4 @@
+import api from "../api"; // Added API import
 import { getEmailService, type EmailData } from "@/utils/emailService"
 
 // Tipos de notificaciones
@@ -86,49 +87,49 @@ export const notificacionesAPI = {
    */
   getConfiguracion: async (): Promise<NotificacionesConfig> => {
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.get('/configuracion/notificaciones')
-    // return response.data
+    const response = await api.get('/configuracion/notificaciones/') // Added trailing slash
+    return response.data
 
     // Simulación con datos de prueba
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(configMock)
-      }, 500)
-    })
+    // return new Promise((resolve) => {
+    //   setTimeout(() => {
+    //     resolve(configMock)
+    //   }, 500)
+    // })
   },
 
   /**
    * Guarda la configuración de notificaciones
    */
-  guardarConfiguracion: async (config: NotificacionesConfig): Promise<{ success: boolean }> => {
+  guardarConfiguracion: async (config: NotificacionesConfig): Promise<any> => { // Return type changed to any to match typical API response
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/configuracion/notificaciones', config)
-    // return response.data
+    const response = await api.post('/configuracion/notificaciones/', config) // Added trailing slash
+    return response.data
 
     // Simulación con datos de prueba
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Actualizar la configuración mock
-        Object.assign(configMock, config)
-        resolve({ success: true })
-      }, 500)
-    })
+    // return new Promise((resolve) => {
+    //   setTimeout(() => {
+    //     // Actualizar la configuración mock
+    //     Object.assign(configMock, config)
+    //     resolve({ success: true })
+    //   }, 500)
+    // })
   },
 
   /**
    * Envía un email de prueba
    */
-  enviarEmailPrueba: async (email: string): Promise<{ success: boolean }> => {
+  enviarEmailPrueba: async (email: string): Promise<any> => { // Return type changed to any to match typical API response
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/configuracion/notificaciones/test', { email })
-    // return response.data
+    const response = await api.post('/configuracion/notificaciones/test/', { email }) // Added trailing slash
+    return response.data
 
     // Simulación con datos de prueba
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ success: true })
-      }, 1000)
-    })
+    // return new Promise((resolve) => {
+    //   setTimeout(() => {
+    //     resolve({ success: true })
+    //   }, 1000)
+    // })
   },
 
   /**

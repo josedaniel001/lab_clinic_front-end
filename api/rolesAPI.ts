@@ -1,16 +1,18 @@
-import { mockGetRoles, mockCreateRol, mockUpdateRol, mockDeleteRol } from "./mockData"
+// import { mockGetRoles, mockCreateRol, mockUpdateRol, mockDeleteRol } from "./mockData" // Mock data removed
+import api from "../api" // API instance imported from ../api
 
 export const rolesAPI = {
   /**
    * Obtiene todos los roles
    */
-  getRoles: async () => {
+  getRoles: async (page?: number) => { // Added optional page parameter
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.get('/roles')
-    // return response.data
+    const url = page ? `/roles/?page=${page}` : "/roles/" // Conditional URL with trailing slash
+    const response = await api.get(url)
+    return response.data
 
     // Simulación con datos de prueba
-    return mockGetRoles()
+    // return mockGetRoles() // Mock data removed
   },
 
   /**
@@ -18,11 +20,11 @@ export const rolesAPI = {
    */
   createRol: async (rolData: any) => {
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.post('/roles', rolData)
-    // return response.data
+    const response = await api.post('/roles/', rolData) // Added trailing slash
+    return response.data
 
     // Simulación con datos de prueba
-    return mockCreateRol(rolData)
+    // return mockCreateRol(rolData) // Mock data removed
   },
 
   /**
@@ -30,11 +32,11 @@ export const rolesAPI = {
    */
   updateRol: async (id: string, rolData: any) => {
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.put(`/roles/${id}`, rolData)
-    // return response.data
+    const response = await api.put(`/roles/${id}/`, rolData) // Added trailing slash
+    return response.data
 
     // Simulación con datos de prueba
-    return mockUpdateRol(id, rolData)
+    // return mockUpdateRol(id, rolData) // Mock data removed
   },
 
   /**
@@ -42,10 +44,10 @@ export const rolesAPI = {
    */
   deleteRol: async (id: string) => {
     // En un entorno real, esto sería una llamada a la API
-    // const response = await api.delete(`/roles/${id}`)
-    // return response.data
+    const response = await api.delete(`/roles/${id}/`) // Added trailing slash
+    return response.data
 
     // Simulación con datos de prueba
-    return mockDeleteRol(id)
+    // return mockDeleteRol(id) // Mock data removed
   },
 }
