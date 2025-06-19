@@ -1,5 +1,5 @@
 // import { mockGetDashboardStats, mockGetRecentOrders } from "./mockData" // Mock data removed
-import api from "../api" // API instance imported from ../api
+import api from "./api" // API instance imported from ../api
 
 export const dashboardAPI = {
   /**

@@ -21,11 +21,18 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Stethoscope, Plus, Edit, Trash2, UserCheck, Users, Award, Activity, Phone, Mail, MapPin } from "lucide-react"
+import { useCatalogosPorPais } from "@/hooks/useCatalogoPorPais"
+import { medicosAPI } from "@/api/medicosAPI"
 
 export default function MedicosPage() {
   const { showLoader, hideLoader } = useLoader()
   const { showNotification } = useNotification()
   const { hasPermission } = usePermissions()
+
+
+  const { departamentos, municipios, loading } = useCatalogosPorPais(1)
+  const [departamentoId, setDepartamentoId] = useState("")
+  const [municipiosFiltrados, setMunicipiosFiltrados] = useState<any[]>([])
 
   const [medicos, setMedicos] = useState([])
   const [openDialog, setOpenDialog] = useState(false)
@@ -34,15 +41,22 @@ export default function MedicosPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [pagination, setPagination] = useState({ page: 1, next: null, previous: null, total: 0 })
+  const [currentPage, setCurrentPage] = useState(1)
+
   const [formData, setFormData] = useState({
     id_medico: "",
     nombre: "",
+    numero_documento: "",
+    tipo_documento:"",
     especialidad: "",
-    cedula: "",
-    telefono: "",
+    codigo_laboratorio: "",
+    sexo: "",
+    celular: "",
     correo: "",
     telefono_consultorio: "",
     direccion_consultorio: "",
+    municipios: "",
   })
 
   useEffect(() => {
@@ -57,71 +71,15 @@ export default function MedicosPage() {
     }
 
     try {
-      // Datos de ejemplo mientras se conecta la API real
-      const mockData = [
-        {
-          id: 1,
-          nombre: "Dr. Alejandro Rodríguez",
-          especialidad: "Cardiología",
-          cedula: "12345678",
-          telefono: "1111111111",
-          correo: "alejandro@example.com",
-          telefono_consultorio: "555-0101",
-          direccion_consultorio: "Calle Principal 123",
-          activo: true,
-          ordenes_mes: 45,
-        },
-        {
-          id: 2,
-          nombre: "Dra. Sofía Hernández",
-          especialidad: "Dermatología",
-          cedula: "87654321",
-          telefono: "2222222222",
-          correo: "sofia@example.com",
-          telefono_consultorio: "555-0102",
-          direccion_consultorio: "Avenida Central 456",
-          activo: true,
-          ordenes_mes: 32,
-        },
-        {
-          id: 3,
-          nombre: "Dr. Miguel Torres",
-          especialidad: "Neurología",
-          cedula: "11223344",
-          telefono: "3333333333",
-          correo: "miguel@example.com",
-          telefono_consultorio: "555-0103",
-          direccion_consultorio: "Plaza Mayor 789",
-          activo: true,
-          ordenes_mes: 28,
-        },
-        {
-          id: 4,
-          nombre: "Dra. Carmen López",
-          especialidad: "Pediatría",
-          cedula: "44332211",
-          telefono: "4444444444",
-          correo: "carmen@example.com",
-          telefono_consultorio: "555-0104",
-          direccion_consultorio: "Calle Salud 321",
-          activo: true,
-          ordenes_mes: 52,
-        },
-        {
-          id: 5,
-          nombre: "Dr. Roberto Martín",
-          especialidad: "Medicina General",
-          cedula: "55667788",
-          telefono: "5555555555",
-          correo: "roberto@example.com",
-          telefono_consultorio: "555-0105",
-          direccion_consultorio: "Avenida Bienestar 654",
-          activo: false,
-          ordenes_mes: 0,
-        },
-      ]
-
-      setMedicos(mockData)
+    const data = await medicosAPI.getMedicos(currentPage)
+          const lista = Array.isArray(data?.results) ? data.results : []
+          setMedicos(lista)
+          setPagination({
+            page: currentPage,
+            next: data.next,
+            previous: data.previous,
+            total: data.count,
+          })      
       if (!showLoading) {
         showNotification("Datos actualizados correctamente", "success")
       }
@@ -142,27 +100,38 @@ export default function MedicosPage() {
 
   const handleOpenDialog = (medico = null) => {
     if (medico) {
+        console.log("Datos de paciente: "+JSON.stringify(medico,null,2))
+        const nombreCompleto = `${medico.nombres} ${medico.apellidos}`.trim()
       setFormData({
-        id_medico: medico.id,
-        nombre: medico.nombre,
-        especialidad: medico.especialidad,
-        cedula: medico.cedula,
-        telefono: medico.telefono,
-        correo: medico.correo,
-        telefono_consultorio: medico.telefono_consultorio || "",
-        direccion_consultorio: medico.direccion_consultorio || "",
+        id_medico: medico.id ?? "",
+        nombre: nombreCompleto ?? "",
+        numero_documento: medico.numero_documento ?? "",
+        tipo_documento: medico.tipo_documento ?? "",
+        especialidad: medico.especialidad_medica  ?? "",
+        codigo_laboratorio: "",
+        sexo: medico.genero ?? "",
+        celular: medico.celular ?? "",
+        correo: medico.email ?? "",
+        telefono_consultorio: medico.telefono_consultorio ?? "",
+        direccion_consultorio: medico.direccion_consultorio ?? "",
+        municipios: medico.municipio?.id?.toString() ?? "",
       })
+       setDepartamentoId(medico.municipio?.departamento?.id?.toString() ?? "")    
       setIsEditing(true)
     } else {
       setFormData({
         id_medico: "",
         nombre: "",
+        numero_documento: "",
+        tipo_documento:"",
         especialidad: "",
-        cedula: "",
-        telefono: "",
+        codigo_laboratorio: "",
+        sexo: "",
+        celular: "",
         correo: "",
         telefono_consultorio: "",
         direccion_consultorio: "",
+        municipios: "",
       })
       setIsEditing(false)
     }
@@ -174,15 +143,92 @@ export default function MedicosPage() {
     setOpenDetailsDialog(true)
   }
 
+   const validateForm = () => {
+    let isValid = true
+    const newErrors = {             
+        nombre: "",
+        numero_documento: "",
+        tipo_documento:"",
+        especialidad: "",
+        codigo_laboratorio: "",
+        sexo: "",
+        celular: "",
+        correo: "",
+        telefono_consultorio: "",
+        direccion_consultorio: "",
+        municipios: "",     
+    }
+
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = "El nombre es requerido"
+      isValid = false
+    }
+    if (!formData.especialidad.trim()) {
+      newErrors.nombre = "La especialidad medica es requerida"
+      isValid = false
+    }
+
+    if (!formData.sexo) {
+      newErrors.sexo = "Seleccione el sexo"
+      isValid = false
+    }
+    if (!formData.municipios) {
+      newErrors.municipios = "Seleccione el municipio"
+      isValid = false
+    }
+
+    if (formData.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
+      newErrors.correo = "Ingrese un correo válido"
+      isValid = false
+    }
+    
+    if (!formData.numero_documento) {
+      newErrors.celular = "El numero de documento es requerido"
+      isValid = false
+    }
+    if (!formData.tipo_documento) {
+      newErrors.tipo_documento = "El tipo de documento es requerido"
+      isValid = false
+    }
+    if (formData.celular && !/^\d{10}$/.test(formData.celular)) {
+      newErrors.celular = "Ingrese un celular válido (10 dígitos)"
+      isValid = false
+    }
+
+    setErrors(newErrors)
+    return isValid
+  }
+
+
+
   const handleSubmit = async () => {
+      if (!validateForm()) return
     showLoader()
     try {
+      const nombreSplit = formData.nombre.trim().split(" ")
+      const nombres = nombreSplit[0] || "Nombre"
+      const apellidos = nombreSplit.slice(1).join(" ") || "Apellido"
+
+      const pacientePayload = {
+        numero_documento: formData.numero_documento ?? "000000000000",
+        tipo_documento: formData.tipo_documento ?? "DPI",
+        nombres,
+        apellidos,
+        celular: formData.celular,
+        telefono_consultorio : formData.telefono_consultorio,
+        email: formData.correo,
+        direccion_consultorio: formData.direccion_consultorio || "Sin dirección",
+        genero: formData.sexo,
+        especialidad_medica : formData.especialidad,        
+        municipio: formData.municipios,
+      }
+      
       if (isEditing) {
-        // await medicosAPI.updateMedico(formData.id_medico, formData)
-        showNotification("Médico actualizado correctamente", "success")
+         await medicosAPI.updateMedico(formData.id_medico, formData)
+        showNotification("Médico/a actualizado correctamente", "success")
       } else {
-        // await medicosAPI.createMedico(formData)
-        showNotification("Médico registrado correctamente", "success")
+         await medicosAPI.createMedico(formData)
+        showNotification("Médico/a registrado correctamente", "success")
       }
       setOpenDialog(false)
       fetchMedicos()
@@ -197,7 +243,7 @@ export default function MedicosPage() {
     if (window.confirm("¿Está seguro de eliminar este médico?")) {
       showLoader()
       try {
-        // await medicosAPI.deleteMedico(id)
+         await medicosAPI.deleteMedico(id)
         showNotification("Médico eliminado correctamente", "success")
         fetchMedicos()
       } catch (error) {
@@ -232,18 +278,40 @@ export default function MedicosPage() {
     return colors[index]
   }
 
-  const filteredMedicos = medicos.filter(
+const paginatedMedico = medicos.map((m: any) => {    
+    return {
+      id: m.id,
+      numero_documento: m.numero_documento,
+      codigo_laboratorio: m.codigo_laboratorio,
+      nombre: `${m.nombres} ${m.apellidos}`,
+      especialidades: m.especialidad_medica,
+      sexo: m.genero,
+      telefono: m.telefono_consultorio ?? m.celular ?? "",
+      correo: m.email,
+      direccion: m.direccion_consultorio,
+      activo: m.activo,
+      ordenes_mes: 0,
+      original: m,
+    }
+  }).filter((m: any) =>
+          m.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          m.correo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          m.edad.includes(searchTerm.toLowerCase()) ||
+          m.telefono.includes(searchTerm)
+        )
+
+  /*const filteredMedicos = medicos.filter(
     (medico: any) =>
       medico.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       medico.especialidad.toLowerCase().includes(searchTerm.toLowerCase()) ||
       medico.correo.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  )*/
 
   const especialidades = [...new Set(medicos.map((m: any) => m.especialidad))].length
   const medicosActivos = medicos.filter((m: any) => m.activo !== false).length
-  const promedioOrdenes = Math.round(
-    medicos.reduce((acc: number, m: any) => acc + (m.ordenes_mes || 0), 0) / medicos.length,
-  )
+  const promedioOrdenes = /*isNaN(Math.round(
+    medicos.reduce((acc: number, m: any) => acc + (m.celular || 0), 0) / medicos.length+1,
+  ))??*/Number(0)
 
   const columns = [
     {
@@ -262,23 +330,23 @@ export default function MedicosPage() {
     },
     {
       key: "nombre",
-      label: "Nombre",
+      label: "Nombre Completo",
       className: "font-medium",
       render: (value: string) => <span style={{ color: "#1f2937" }}>{value}</span>,
     },
     {
-      key: "especialidad",
-      label: "Especialidad",
+      key: "especialidades",
+      label: "Especialidades Medicas",
       render: (value: string) => <StatusBadge status={value} />,
     },
     {
-      key: "cedula",
-      label: "Cédula",
+      key: "codigo_laboratorio",
+      label: "Codigo de Laboratorio",
       render: (value: string) => <span style={{ color: "#4b5563" }}>{value}</span>,
     },
     {
       key: "telefono",
-      label: "Teléfono",
+      label: "Teléfono de Consultorio",
       render: (value: string) => (
         <div className="flex items-center gap-1">
           <Phone className="h-3 w-3 text-gray-400" />
@@ -288,7 +356,7 @@ export default function MedicosPage() {
     },
     {
       key: "correo",
-      label: "Correo",
+      label: "Correo Electronico",
       render: (value: string) => (
         <div className="flex items-center gap-1">
           <Mail className="h-3 w-3 text-gray-400" />
@@ -409,25 +477,25 @@ export default function MedicosPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cedula" style={{ color: "#374151" }}>
-              Cédula *
+            <Label htmlFor="codigo_laboratorio" style={{ color: "#374151" }}>
+              Codigo de Laboratorio 
             </Label>
             <Input
-              id="cedula"
-              value={formData.cedula}
-              onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
+              id="codigo_laboratorio"
+              value={formData.codigo_laboratorio}
+              onChange={(e) => setFormData({ ...formData, codigo_laboratorio: e.target.value })}
               style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="telefono" style={{ color: "#374151" }}>
-              Teléfono personal
+              Celular Personal
             </Label>
             <Input
               id="telefono"
-              value={formData.telefono}
-              onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+              value={formData.celular}
+              onChange={(e) => setFormData({ ...formData, celular: e.target.value })}
               style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }}
             />
           </div>
@@ -502,7 +570,7 @@ export default function MedicosPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => handleOpenDialog(row)}
+          onClick={() => handleOpenDialog(row.original)}
           className="h-8 w-8 p-0"
           style={{ color: "#2563eb" }}
           title="Editar"
@@ -539,15 +607,32 @@ export default function MedicosPage() {
         stats={stats}
       >
         <DataTable
-          data={filteredMedicos}
+          data={paginatedMedico}
           columns={columns}
           actions={tableActions}
           emptyMessage="No se encontraron médicos que coincidan con tu búsqueda"
           emptyIcon={<Stethoscope className="h-12 w-12 text-gray-400" />}
         />
+      <div className="flex justify-between items-center mt-4">
+        <Button
+          variant="outline"
+          disabled={currentPage === 1 || !pagination.previous}
+          onClick={() => setCurrentPage((prev) => prev - 1)}
+        >
+          Anterior
+        </Button>
+        <span>Página {currentPage}</span>
+        <Button
+          variant="outline"
+          disabled={!pagination.next}
+          onClick={() => setCurrentPage((prev) => prev + 1)}
+        >
+          Siguiente
+        </Button>
+      </div>
       </PageLayout>
 
-      {/* Details Dialog */}
+      {/* Details Dialog 
       <Modal open={openDetailsDialog} onOpenChange={setOpenDetailsDialog}>
         <ModalContent className="sm:max-w-lg">
           <ModalHeader>
@@ -645,7 +730,7 @@ export default function MedicosPage() {
             </Button>
           </ModalFooter>
         </ModalContent>
-      </Modal>
+      </Modal>*/}
     </>
   )
 }

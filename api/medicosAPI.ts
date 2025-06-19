@@ -1,5 +1,5 @@
 // import { mockGetMedicos, mockCreateMedico, mockUpdateMedico, mockDeleteMedico } from "./mockData" // Mock data removed
-import api from "../api" // API instance imported from ../api
+import api from "./api" // API instance imported from ../api
 
 export const medicosAPI = {
   /**

@@ -1,5 +1,5 @@
 // import { mockGetPermisos, mockGetPermisosByRol, mockSavePermisos } from "./mockData" // Mock data removed
-import api from "../api" // API instance imported from ../api
+import api from "./api" // API instance imported from ../api
 
 export const permisosAPI = {
   /**
@@ -20,7 +20,7 @@ export const permisosAPI = {
    */
   getPermisosByRol: async (rolId: string, page?: number) => { // Added optional page parameter
     // En un entorno real, esto sería una llamada a la API
-    const url = page ? `/roles/${rolId}/permisos/?page=${page}` : `/roles/${rolId}/permisos/` // Conditional URL with trailing slash
+    const url = page ? `/permisos/rol/${rolId}/?page=${page}` : `/permisos/rol/${rolId}` // Conditional URL with trailing slash
     const response = await api.get(url)
     return response.data
 
