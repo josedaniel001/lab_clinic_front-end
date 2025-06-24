@@ -46,17 +46,15 @@ class SmartOfflineAPI {
     cacheKey: string,
     cacheExpiry: number,
     retryAttempts: number,
-    timeout: number,
+    timeout: number
   ): Promise<any> {
     let lastError: any
 
     for (let attempt = 1; attempt <= retryAttempts; attempt++) {
       try {
         console.log(`🌐 Intentando conectar con API: ${endpoint} (intento ${attempt}/${retryAttempts})`)
-
         const response = await api.get(endpoint, { timeout })
         await offlineStorage.cacheData(cacheKey, response.data, cacheExpiry)
-
         console.log(`✅ Datos obtenidos de API: ${endpoint}`)
         return response.data
       } catch (error: any) {
@@ -89,8 +87,7 @@ class SmartOfflineAPI {
       await offlineStorage.addPendingOperation({
         type: "CREATE",
         endpoint,
-        data,
-        error: null
+        data
       })
 
       return {
@@ -98,7 +95,7 @@ class SmartOfflineAPI {
         ...data,
         _isOffline: true,
         _pendingSync: true,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       }
     }
 
@@ -111,7 +108,6 @@ class SmartOfflineAPI {
     for (let attempt = 1; attempt <= retryAttempts; attempt++) {
       try {
         console.log(`🌐 Enviando a API: POST ${endpoint} (intento ${attempt}/${retryAttempts})`)
-
         const response = await api.post(endpoint, data, { timeout })
         console.log(`✅ Datos enviados a API: POST ${endpoint}`)
         return response.data
@@ -125,8 +121,7 @@ class SmartOfflineAPI {
           await offlineStorage.addPendingOperation({
             type: "CREATE",
             endpoint,
-            data,
-            error: error.message
+            data
           })
 
           return {
@@ -135,7 +130,7 @@ class SmartOfflineAPI {
             _isOffline: true,
             _pendingSync: true,
             _apiError: error.message,
-            createdAt: new Date().toISOString(),
+            createdAt: new Date().toISOString()
           }
         }
 
@@ -157,8 +152,7 @@ class SmartOfflineAPI {
       await offlineStorage.addPendingOperation({
         type: "UPDATE",
         endpoint,
-        data,
-        error: null
+        data
       })
 
       return { ...data, _isOffline: true, _pendingSync: true }
@@ -181,8 +175,7 @@ class SmartOfflineAPI {
           await offlineStorage.addPendingOperation({
             type: "UPDATE",
             endpoint,
-            data,
-            error: error.message
+            data
           })
 
           return { ...data, _isOffline: true, _pendingSync: true, _apiError: error.message }
@@ -206,8 +199,7 @@ class SmartOfflineAPI {
       await offlineStorage.addPendingOperation({
         type: "DELETE",
         endpoint,
-        data: null,
-        error: null
+        data: null
       })
 
       return { success: true, _isOffline: true, _pendingSync: true }
@@ -230,8 +222,7 @@ class SmartOfflineAPI {
           await offlineStorage.addPendingOperation({
             type: "DELETE",
             endpoint,
-            data: null,
-            error: error.message
+            data: null
           })
 
           return { success: true, _isOffline: true, _pendingSync: true, _apiError: error.message }
