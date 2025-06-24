@@ -37,7 +37,7 @@ import {
   Check as CheckIcon,
   Error as ErrorIcon,
 } from "@mui/icons-material"
-import { testEmailConnection } from "@/utils/emailService"
+
 
 // Mock API para configuración de notificaciones
 const notificacionesAPI = {
@@ -262,7 +262,7 @@ export default function NotificacionesPage() {
     setTestResult(null)
     try {
       // En un entorno real, aquí se probaría la conexión SMTP
-      const result = await testEmailConnection()
+      const result = null
       if (result) {
         setTestResult({
           success: true,

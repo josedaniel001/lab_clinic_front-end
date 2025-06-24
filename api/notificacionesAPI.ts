@@ -1,5 +1,5 @@
-import api from "../api"; // Added API import
-import { getEmailService, type EmailData } from "@/utils/emailService"
+import api from "./api"; // Added API import
+
 
 // Tipos de notificaciones
 export type NotificationType = "resultados" | "factura" | "orden" | "recordatorio" | "bienvenida"
@@ -151,23 +151,7 @@ export const notificacionesAPI = {
     }
 
     // Preparar los datos del email
-    const emailData: EmailData = {
-      to: destinatario,
-      subject: configMock.plantillas[tipo as keyof typeof configMock.plantillas].asunto,
-      templateId: tipo,
-      context: datos,
-    }
-
-    // Obtener el servicio de email
-    const emailService = getEmailService()
-    if (!emailService) {
-      return { success: false }
-    }
-
-    // Enviar el email
-    const result = await emailService.sendEmail(emailData)
-    return { success: result }
-  },
+    
 }
 
 // Funciones de ayuda para enviar notificaciones específicas
