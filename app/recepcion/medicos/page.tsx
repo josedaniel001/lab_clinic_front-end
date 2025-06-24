@@ -42,6 +42,7 @@ export default function MedicosPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [pagination, setPagination] = useState({ page: 1, next: null, previous: null, total: 0 })
+   const [limit, setLimit] = useState(5)
   const [currentPage, setCurrentPage] = useState(1)
 
   const [formData, setFormData] = useState({
@@ -49,7 +50,7 @@ export default function MedicosPage() {
     nombre: "",
     numero_documento: "",
     tipo_documento:"",
-    especialidad: "",
+    especialidades: "",
     codigo_laboratorio: "",
     sexo: "",
     celular: "",
@@ -59,9 +60,61 @@ export default function MedicosPage() {
     municipios: "",
   })
 
+   const [errors, setErrors] = useState({
+     id_medico: "",
+    nombre: "",
+    numero_documento: "",
+    tipo_documento:"",
+    especialidades: "",
+    codigo_laboratorio: "",
+    sexo: "",
+    celular: "",
+    correo: "",
+    telefono_consultorio: "",
+    direccion_consultorio: "",
+    municipios: "",
+  })
+
+  const catalgoEspecialidad =[
+    {value:'GEN', label:'Medicina General'},
+        {value:'PED', label:'Pediatría'},
+        {value:'GIN', label:'Ginecología'},
+        {value:'DER', label:'Dermatología'},
+        {value:'CAR', label:'Cardiología'},
+        {value:'NEU', label:'Neurología'},
+        {value:'NEURO', label:'Neumología'},
+        {value:'END', label:'Endocrinología'},
+        {value:'OFT', label:'Oftalmología'},
+        {value:'OTO', label:'Otorrinolaringología'},
+        {value:'TRA', label:'Traumatología'},
+        {value:'URO', label:'Urología'},
+        {value:'PSI', label:'Psiquiatría'},
+        {value:'ODO', label:'Odontología'},
+        {value:'REU', label:'Reumatología'},
+        {value:'GAS', label:'Gastroenterología'},
+        {value:'ONC', label:'Oncología'},
+        {value:'HEM', label:'Hematología'},
+        {value:'CIR', label:'Cirugía General'},
+        {value:'CIRP', label:'Cirugía Pediátrica'},
+        {value:'CIRC', label:'Cirugía Cardiovascular'},
+        {value:'RAD', label:'Radiología'},
+        {value:'INT', label:'Medicina Interna'},
+        {value:'FOR', label:'Medicina Forense'},
+        {value:'ANE', label:'Anestesiología'},
+  ]
   useEffect(() => {
     fetchMedicos()
-  }, [])
+  }, [currentPage,limit])
+
+ useEffect(() => {
+  if (departamentoId) {
+    const filtrados = municipios.filter(m => m.departamento.id.toString() === departamentoId)
+    setMunicipiosFiltrados(filtrados)
+  } else {
+    setMunicipiosFiltrados([])
+  }
+}, [departamentoId, municipios])
+
 
   const fetchMedicos = async (showLoading = true) => {
     if (showLoading) {
@@ -71,7 +124,7 @@ export default function MedicosPage() {
     }
 
     try {
-    const data = await medicosAPI.getMedicos(currentPage)
+    const data = await medicosAPI.getMedicos(currentPage,limit)
           const lista = Array.isArray(data?.results) ? data.results : []
           setMedicos(lista)
           setPagination({
@@ -107,8 +160,8 @@ export default function MedicosPage() {
         nombre: nombreCompleto ?? "",
         numero_documento: medico.numero_documento ?? "",
         tipo_documento: medico.tipo_documento ?? "",
-        especialidad: medico.especialidad_medica  ?? "",
-        codigo_laboratorio: "",
+        especialidades: medico.especialidad_medica  ?? "",
+        codigo_laboratorio: medico.codigo_laboratorio ?? "",
         sexo: medico.genero ?? "",
         celular: medico.celular ?? "",
         correo: medico.email ?? "",
@@ -124,7 +177,7 @@ export default function MedicosPage() {
         nombre: "",
         numero_documento: "",
         tipo_documento:"",
-        especialidad: "",
+        especialidades: "",
         codigo_laboratorio: "",
         sexo: "",
         celular: "",
@@ -149,7 +202,7 @@ export default function MedicosPage() {
         nombre: "",
         numero_documento: "",
         tipo_documento:"",
-        especialidad: "",
+        especialidades: "",
         codigo_laboratorio: "",
         sexo: "",
         celular: "",
@@ -163,8 +216,8 @@ export default function MedicosPage() {
       newErrors.nombre = "El nombre es requerido"
       isValid = false
     }
-    if (!formData.especialidad.trim()) {
-      newErrors.nombre = "La especialidad medica es requerida"
+    if (!formData.especialidades.trim()) {
+      newErrors.especialidades = "La especialidad medica es requerida"
       isValid = false
     }
 
@@ -196,13 +249,19 @@ export default function MedicosPage() {
     }
 
     setErrors(newErrors)
+    console.log("Errores en validación:", newErrors)
     return isValid
   }
 
 
 
   const handleSubmit = async () => {
-      if (!validateForm()) return
+    console.log("Lanzando evento: ");     
+    if (!validateForm()) {
+    console.warn("Formulario inválido, no se envía")
+    return
+    }
+    console.log("Formulario válido, se continúa con la petición")
     showLoader()
     try {
       const nombreSplit = formData.nombre.trim().split(" ")
@@ -219,15 +278,16 @@ export default function MedicosPage() {
         email: formData.correo,
         direccion_consultorio: formData.direccion_consultorio || "Sin dirección",
         genero: formData.sexo,
-        especialidad_medica : formData.especialidad,        
+        especialidad_medica : formData.especialidades,        
         municipio: formData.municipios,
       }
       
       if (isEditing) {
-         await medicosAPI.updateMedico(formData.id_medico, formData)
+        console.log("lanzando evento de edicion: "+JSON.stringify(pacientePayload,null,2))
+         await medicosAPI.updateMedico(formData.id_medico, pacientePayload)
         showNotification("Médico/a actualizado correctamente", "success")
       } else {
-         await medicosAPI.createMedico(formData)
+         await medicosAPI.createMedico(pacientePayload)
         showNotification("Médico/a registrado correctamente", "success")
       }
       setOpenDialog(false)
@@ -418,8 +478,7 @@ const paginatedMedico = medicos.map((m: any) => {
   ]
 
   const actions = (
-    <Modal open={openDialog} onOpenChange={setOpenDialog}>
-      <ModalTrigger asChild>
+    <Modal open={openDialog} onOpenChange={setOpenDialog}>      
         <Button
           onClick={() => handleOpenDialog()}
           className="gap-2"
@@ -427,8 +486,7 @@ const paginatedMedico = medicos.map((m: any) => {
         >
           <Plus className="h-4 w-4" />
           Nuevo Médico
-        </Button>
-      </ModalTrigger>
+        </Button>      
       <ModalContent className="sm:max-w-2xl">
         <ModalHeader>
           <ModalTitle style={{ color: "#1f2937" }}>{isEditing ? "Editar Médico" : "Nuevo Médico"}</ModalTitle>
@@ -447,33 +505,32 @@ const paginatedMedico = medicos.map((m: any) => {
               value={formData.nombre}
               onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
               style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }}
+              className={errors.nombre ? "border-red-500" : ""}
             />
+             {errors.nombre && <p className="text-sm text-red-500">{errors.nombre}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="especialidad" style={{ color: "#374151" }}>
-              Especialidad *
+            <Label htmlFor="especialidades" style={{ color: "#374151" }}>
+              Especialidad Medica*
             </Label>
             <Select
-              value={formData.especialidad}
-              onValueChange={(value) => setFormData({ ...formData, especialidad: value })}
+              value={formData.especialidades}
+              onValueChange={(value) => setFormData({ ...formData, especialidades: value })}
             >
-              <SelectTrigger style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }}>
+              <SelectTrigger  style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }} className={errors.especialidades ? "border-red-500" : ""}>
                 <SelectValue placeholder="Seleccionar especialidad" />
               </SelectTrigger>
               <SelectContent style={{ backgroundColor: "white", color: "#1f2937" }}>
-                <SelectItem value="Medicina General">Medicina General</SelectItem>
-                <SelectItem value="Cardiología">Cardiología</SelectItem>
-                <SelectItem value="Dermatología">Dermatología</SelectItem>
-                <SelectItem value="Endocrinología">Endocrinología</SelectItem>
-                <SelectItem value="Gastroenterología">Gastroenterología</SelectItem>
-                <SelectItem value="Ginecología">Ginecología</SelectItem>
-                <SelectItem value="Neurología">Neurología</SelectItem>
-                <SelectItem value="Pediatría">Pediatría</SelectItem>
-                <SelectItem value="Psiquiatría">Psiquiatría</SelectItem>
-                <SelectItem value="Urología">Urología</SelectItem>
+              {catalgoEspecialidad.map((o)=>(
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+
+              ))}                              
               </SelectContent>
             </Select>
+            {errors.especialidades && <p className="text-sm text-red-500">{errors.especialidades}</p>}
           </div>
 
           <div className="space-y-2">
@@ -485,19 +542,23 @@ const paginatedMedico = medicos.map((m: any) => {
               value={formData.codigo_laboratorio}
               onChange={(e) => setFormData({ ...formData, codigo_laboratorio: e.target.value })}
               style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }}
+              className={errors.codigo_laboratorio ? "border-red-500" : ""}
             />
+            {errors.codigo_laboratorio && <p className="text-sm text-red-500">{errors.codigo_laboratorio}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="telefono" style={{ color: "#374151" }}>
+            <Label htmlFor="celular" style={{ color: "#374151" }}>
               Celular Personal
             </Label>
             <Input
-              id="telefono"
+              id="celular"
               value={formData.celular}
               onChange={(e) => setFormData({ ...formData, celular: e.target.value })}
               style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }}
+              className={errors.celular ? "border-red-500" : ""}
             />
+            {errors.celular && <p className="text-sm text-red-500">{errors.celular}</p>}
           </div>
 
           <div className="space-y-2">
@@ -510,7 +571,9 @@ const paginatedMedico = medicos.map((m: any) => {
               value={formData.correo}
               onChange={(e) => setFormData({ ...formData, correo: e.target.value })}
               style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }}
+              className={errors.correo ? "border-red-500" : ""}
             />
+            {errors.correo && <p className="text-sm text-red-500">{errors.correo}</p>}
           </div>
 
           <div className="space-y-2">
@@ -522,7 +585,9 @@ const paginatedMedico = medicos.map((m: any) => {
               value={formData.telefono_consultorio}
               onChange={(e) => setFormData({ ...formData, telefono_consultorio: e.target.value })}
               style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }}
+              className={errors.telefono_consultorio ? "border-red-500" : ""}
             />
+            {errors.telefono_consultorio && <p className="text-sm text-red-500">{errors.telefono_consultorio}</p>}
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -534,11 +599,72 @@ const paginatedMedico = medicos.map((m: any) => {
               value={formData.direccion_consultorio}
               onChange={(e) => setFormData({ ...formData, direccion_consultorio: e.target.value })}
               style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }}
+              className={errors.direccion_consultorio ? "border-red-500" : ""}
             />
+            {errors.direccion_consultorio && <p className="text-sm text-red-500">{errors.direccion_consultorio}</p>}
           </div>
+          <div className="space-y-2 md:col-span-2">            
+            <Label htmlFor="sexo">Sexo *</Label>
+            <Select value={formData.sexo} onValueChange={(value) => setFormData({ ...formData, sexo: value })}>
+              <SelectTrigger className={errors.sexo ? "border-red-500" : ""}>
+                <SelectValue placeholder="Seleccionar sexo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="M">Masculino</SelectItem>
+                <SelectItem value="F">Femenino</SelectItem>
+                <SelectItem value="O">Otro</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.sexo && <p className="text-sm text-red-500">{errors.sexo}</p>}          
+          </div>          
+
+           <div className="space-y-2 md:col-span-2">
+                       <Label htmlFor="departamento">Departamento *</Label>
+                          <Select
+                            value={departamentoId}
+                            onValueChange={(value) => {
+                              setDepartamentoId(value)
+                              setFormData(prev => ({ ...prev, municipio: "" }))
+                            }}
+                          >
+                            <SelectTrigger className={errors.municipios ? "border-red-500" : ""}>
+                              <SelectValue placeholder="Seleccionar departamento" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {departamentos.map((d) => (
+                                <SelectItem key={d.id} value={d.id.toString()}>
+                                  {d.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="municipio">Municipio *</Label>
+                        <Select
+                          value={formData.municipios}
+                          onValueChange={(value) => setFormData({ ...formData, municipios: value })}
+                          disabled={!departamentoId}
+                        >
+                          <SelectTrigger className={errors.municipios ? "border-red-500" : ""}>
+                            <SelectValue placeholder="Seleccionar municipio" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {municipiosFiltrados.map((m) => (
+                              <SelectItem key={m.id} value={m.id.toString()}>
+                                {m.nombre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.municipios && <p className="text-sm text-red-500">{errors.municipios}</p>}
+                </div>
+          
+             
         </div>
 
         <ModalFooter>
+          
           <Button
             variant="outline"
             onClick={() => setOpenDialog(false)}
@@ -549,7 +675,9 @@ const paginatedMedico = medicos.map((m: any) => {
           <Button onClick={handleSubmit} style={{ backgroundColor: "#2563eb", color: "white" }}>
             {isEditing ? "Actualizar" : "Guardar"}
           </Button>
+          
         </ModalFooter>
+        
       </ModalContent>
     </Modal>
   )
@@ -559,7 +687,7 @@ const paginatedMedico = medicos.map((m: any) => {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => handleOpenDetails(row)}
+        onClick={() => handleOpenDetails(row.original)}
         className="h-8 w-8 p-0"
         style={{ color: "#2563eb" }}
         title="Ver detalles"
@@ -622,6 +750,25 @@ const paginatedMedico = medicos.map((m: any) => {
           Anterior
         </Button>
         <span>Página {currentPage}</span>
+        <div className="flex items-center gap-2 mb-4">
+            <Label className="text-sm font-medium text-gray-700">Registros por página:</Label>
+            <Select value={limit.toString()} onValueChange={(value) => {
+              const newLimit = value === "all" ? 1000 : parseInt(value)
+              setLimit(newLimit)
+              setCurrentPage(1)
+            }}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Cantidad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         <Button
           variant="outline"
           disabled={!pagination.next}
@@ -632,7 +779,7 @@ const paginatedMedico = medicos.map((m: any) => {
       </div>
       </PageLayout>
 
-      {/* Details Dialog 
+      {/* Details Dialog */}
       <Modal open={openDetailsDialog} onOpenChange={setOpenDetailsDialog}>
         <ModalContent className="sm:max-w-lg">
           <ModalHeader>
@@ -646,44 +793,44 @@ const paginatedMedico = medicos.map((m: any) => {
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 {(() => {
-                  const color = getAvatarColor(selectedMedico.nombre)
+                  const color = getAvatarColor(`${selectedMedico.nombres} ${selectedMedico.apellidos}`)
                   return (
                     <Avatar className="h-16 w-16">
                       <AvatarFallback
                         className="font-semibold text-lg"
                         style={{ backgroundColor: color.bg, color: color.text }}
                       >
-                        {getInitials(selectedMedico.nombre)}
+                        {getInitials(`${selectedMedico.nombres} ${selectedMedico.apellidos}`)}
                       </AvatarFallback>
                     </Avatar>
                   )
                 })()}
                 <div>
                   <h3 className="text-lg font-semibold" style={{ color: "#1f2937" }}>
-                    {selectedMedico.nombre}
+                    {`${selectedMedico.nombres} ${selectedMedico.apellidos}`}
                   </h3>
-                  <p style={{ color: "#2563eb" }}>{selectedMedico.especialidad}</p>
+                  <p style={{ color: "#2563eb" }}>{selectedMedico.especialidad_medica}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="font-medium" style={{ color: "#6b7280" }}>
-                    Cédula:
+                    Codigo de Laboratorio:
                   </p>
-                  <p style={{ color: "#1f2937" }}>{selectedMedico.cedula}</p>
+                  <p style={{ color: "#1f2937" }}>{selectedMedico.codigo_laboratorio}</p>
                 </div>
                 <div>
                   <p className="font-medium" style={{ color: "#6b7280" }}>
-                    Teléfono:
+                    Celular Personal:
                   </p>
-                  <p style={{ color: "#1f2937" }}>{selectedMedico.telefono}</p>
+                  <p style={{ color: "#1f2937" }}>{selectedMedico.celular}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="font-medium" style={{ color: "#6b7280" }}>
-                    Correo:
+                    Correo Electronico:
                   </p>
-                  <p style={{ color: "#2563eb" }}>{selectedMedico.correo}</p>
+                  <p style={{ color: "#2563eb" }}>{selectedMedico.email}</p>
                 </div>
                 {selectedMedico.telefono_consultorio && (
                   <div>
@@ -730,7 +877,8 @@ const paginatedMedico = medicos.map((m: any) => {
             </Button>
           </ModalFooter>
         </ModalContent>
-      </Modal>*/}
+      </Modal>
+      {/**/}
     </>
   )
 }

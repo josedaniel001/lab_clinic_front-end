@@ -5,12 +5,14 @@ export const pacientesAPI = {
   /**
    * Obtiene todos los pacientes
    */
-  getPacientes: async (page?: number) => { // Added optional page parameter
-    // En un entorno real, esto sería una llamada a la API
-    const url = page ? `/pacientes/?page=${page}` : "/pacientes/" // Conditional URL
-    const response = await api.get(url)
-    return response.data
+  getPacientes: async (page?: number, limite?: number) => { // Added optional page parameter
+    const params = new URLSearchParams()
+    if (page) params.append("page", page.toString())
+    if (limite) params.append("limit", limite.toString())
 
+    const url = `/pacientes/?${params.toString()}`
+    const response = await api.get(url)
+    return response.data   
     // Simulación con datos de prueba
     // return mockGetPacientes() // Mock data removed
   },

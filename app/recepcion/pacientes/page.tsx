@@ -37,7 +37,7 @@ export default function PacientesPage() {
   const [pacientes, setPacientes] = useState([])
   const [pagination, setPagination] = useState({ page: 1, next: null, previous: null, total: 0 })
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
+  const [limit, setLimit] = useState(5)
 
 
  const [formData, setFormData] = useState({
@@ -69,7 +69,7 @@ export default function PacientesPage() {
 
   useEffect(() => {
     fetchPacientes()
-  }, [currentPage])
+  }, [currentPage,limit])
 
   useEffect(() => {
   if (departamentoId) {
@@ -88,7 +88,7 @@ export default function PacientesPage() {
     }
 
     try {
-      const data = await pacientesAPI.getPacientes(currentPage)
+      const data = await pacientesAPI.getPacientes(currentPage,limit)
       const lista = Array.isArray(data?.results) ? data.results : []
       setPacientes(lista)
       setPagination({
@@ -368,28 +368,28 @@ const promedioEdad = pacientes.length > 0
       title: "Total Pacientes",
       value: pacientes.length.toLocaleString(),
       icon: <Users className="h-6 w-6" />,
-      color: "bg-gradient-to-r from-blue-500 to-blue-600",
+      color: "primary",
       trend: "+12% este mes",
     },
     {
       title: "Nuevos este mes",
       value: "24",
       icon: <UserPlus className="h-6 w-6" />,
-      color: "bg-gradient-to-r from-green-500 to-green-600",
+      color: "success",
       trend: "+3 vs ayer",
     },
     {
       title: "Activos",
       value: paginatedPacientes.length.toString(),
       icon: <Users className="h-6 w-6" />,
-      color: "bg-gradient-to-r from-purple-500 to-purple-600",
+      color: "secondary",
       trend: "Filtrados",
     },
     {
       title: "Promedio Edad",
       value: promedioEdad.toString(),
       icon: <Users className="h-6 w-6" />,
-      color: "bg-gradient-to-r from-orange-500 to-orange-600",
+      color: "warning",
       trend: "años",
     },
   ]
@@ -636,6 +636,25 @@ const promedioEdad = pacientes.length > 0
           Anterior
         </Button>
         <span>Página {currentPage}</span>
+         <div className="flex items-center gap-2 mb-4">
+            <Label className="text-sm font-medium text-gray-700">Registros por página:</Label>
+            <Select value={limit.toString()} onValueChange={(value) => {
+              const newLimit = value === "all" ? 1000 : parseInt(value)
+              setLimit(newLimit)
+              setCurrentPage(1)
+            }}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Cantidad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         <Button
           variant="outline"
           disabled={!pagination.next}

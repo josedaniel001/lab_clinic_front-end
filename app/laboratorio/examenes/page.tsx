@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/Modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TestTube, Activity, Clock, DollarSign, Plus, Edit, Trash2, Eye } from "lucide-react"
+import { examenesAPI } from "@/api/examenesAPI"
 
 interface Examen {
   id: number
@@ -111,7 +112,6 @@ export default function ExamenesPage() {
   const { showLoader, hideLoader } = useLoader()
   const { showNotification } = useNotification()
   const { hasPermission } = usePermissions()
-
   const [examenes, setExamenes] = useState<Examen[]>([])
   const [openDialog, setOpenDialog] = useState(false)
   const [openViewDialog, setOpenViewDialog] = useState(false)
@@ -119,6 +119,9 @@ export default function ExamenesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedExamen, setSelectedExamen] = useState<Examen | null>(null)
+  const [pagination, setPagination] = useState({ page: 1, next: null, previous: null, total: 0 })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [limit, setLimit] = useState(5)
   const [formData, setFormData] = useState({
     id: "",
     codigo: "",
@@ -140,7 +143,7 @@ export default function ExamenesPage() {
 
   useEffect(() => {
     fetchExamenes()
-  }, [])
+  }, [currentPage,limit])
 
   const fetchExamenes = async (showLoading = true) => {
     if (showLoading) {
@@ -148,20 +151,26 @@ export default function ExamenesPage() {
     } else {
       setIsRefreshing(true)
     }
-
     try {
-      // Simular API call
-      setTimeout(() => {
-        setExamenes(EXAMENES_EJEMPLO)
-        if (!showLoading) {
-          showNotification("Datos actualizados correctamente", "success")
-        }
-        if (showLoading) {
-          hideLoader()
-        } else {
-          setIsRefreshing(false)
-        }
-      }, 1000)
+      // Simular API call    
+      const data = await examenesAPI.getExamenes(currentPage, limit)
+      const lista = Array.isArray(data?.results) ? data.results : []
+      console.log("Primera Carga de Datos: " + JSON.stringify(lista, null, 2))
+      setExamenes(lista)
+      setPagination({
+        page: currentPage,
+        next: data.next,
+        previous: data.previous,
+        total: data.count,
+      })
+      if (!showLoading) {
+        showNotification("Datos actualizados correctamente", "success")
+      }
+      if (showLoading) {
+        hideLoader()
+      } else {
+        setIsRefreshing(false)
+      }
     } catch (error) {
       showNotification("Error al cargar exámenes", "error")
       if (showLoading) {
@@ -267,23 +276,20 @@ export default function ExamenesPage() {
 
     showLoader()
     try {
+      const { id, ...restFormData } = formData
       const examenData: Examen = {
-        ...formData,
-        id: isEditing ? Number(formData.id) : Date.now(),
+        ...restFormData,
         precio: Number(formData.precio) || 0,
-        fecha_creacion: isEditing
-          ? examenes.find((e) => e.id === Number(formData.id))?.fecha_creacion || new Date().toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0],
       }
 
       if (isEditing) {
-        setExamenes((prev) => prev.map((e) => (e.id === Number(formData.id) ? examenData : e)))
+        await examenesAPI.updateExamen(id, examenData);
         showNotification("Examen actualizado correctamente", "success")
       } else {
-        setExamenes((prev) => [...prev, examenData])
+        await examenesAPI.createExamen(examenData)
         showNotification("Examen creado correctamente", "success")
       }
-
+      fetchExamenes()
       handleCloseDialog()
     } catch (error) {
       showNotification("Error al guardar examen", "error")
@@ -297,6 +303,7 @@ export default function ExamenesPage() {
       showLoader()
       try {
         setExamenes((prev) => prev.filter((e) => e.id !== id))
+        fetchExamenes()
         showNotification("Examen eliminado correctamente", "success")
       } catch (error) {
         showNotification("Error al eliminar examen", "error")
@@ -305,6 +312,7 @@ export default function ExamenesPage() {
       }
     }
   }
+
 
   const filteredExamenes = examenes.filter(
     (examen) =>
@@ -324,7 +332,7 @@ export default function ExamenesPage() {
     {
       key: "precio",
       label: "Precio",
-      render: (value: number) => `$${value.toLocaleString()}`,
+      render: (value: number) => `Q${value.toLocaleString()}`,
       className: "font-medium",
     },
     {
@@ -357,8 +365,8 @@ export default function ExamenesPage() {
       title: "Precio Promedio",
       value:
         examenes.length > 0
-          ? `$${Math.round(examenes.reduce((acc, e) => acc + e.precio, 0) / examenes.length).toLocaleString()}`
-          : "$0",
+          ? `Q ${Math.round(examenes.reduce((acc, e) => acc + Number(e.precio), 0) / examenes.length).toLocaleString()}`
+          : "Q 0",
       icon: <DollarSign className="h-6 w-6" />,
       color: "warning",
     },
@@ -581,6 +589,43 @@ export default function ExamenesPage() {
           emptyMessage="No se encontraron exámenes que coincidan con tu búsqueda"
           emptyIcon={<TestTube className="h-12 w-12 text-gray-400" />}
         />
+        <div className="flex justify-between items-center mt-4">
+          <Button
+            variant="outline"
+            disabled={currentPage === 1 || !pagination.previous}
+            onClick={() => setCurrentPage((prev) => prev - 1)}
+          >
+            Anterior
+          </Button>
+          <span>Página {currentPage}</span>
+          <div className="flex items-center gap-2 mb-4">
+            <Label className="text-sm font-medium text-gray-700">Registros por página:</Label>
+            <Select value={limit.toString()} onValueChange={(value) => {
+              const newLimit = value === "all" ? 1000 : parseInt(value)
+              setLimit(newLimit)
+              setCurrentPage(1)
+            }}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Cantidad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            disabled={!pagination.next}
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+          >
+            Siguiente
+          </Button>
+          
+        </div>
       </PageLayout>
 
       {/* Modal Ver Detalles */}
@@ -623,7 +668,7 @@ export default function ExamenesPage() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Precio</Label>
-                  <p className="mt-1 text-lg font-semibold text-green-600">${selectedExamen.precio.toLocaleString()}</p>
+                  <p className="mt-1 text-lg font-semibold text-green-600">Q{selectedExamen.precio.toLocaleString()}</p>
                 </div>
               </div>
 
