@@ -13,11 +13,9 @@ interface SmartAPIOptions {
 class SmartOfflineAPI {
   private requestQueue: Map<string, Promise<any>> = new Map()
 
-  // GET inteligente con fallback automático
   async get(endpoint: string, options: SmartAPIOptions = {}): Promise<any> {
     const { cacheKey = endpoint, cacheExpiry = 30, forceOffline = false, retryAttempts = 2, timeout = 10000 } = options
 
-    // Si forzamos offline o la API no está disponible, usar cache
     if (forceOffline || !apiHealthChecker.isAPIHealthy()) {
       const cachedData = await offlineStorage.getCachedData(cacheKey)
       if (cachedData) {
@@ -27,7 +25,6 @@ class SmartOfflineAPI {
       throw new Error(`No hay datos offline disponibles para ${endpoint}`)
     }
 
-    // Evitar requests duplicados
     const requestKey = `GET:${endpoint}`
     if (this.requestQueue.has(requestKey)) {
       return await this.requestQueue.get(requestKey)!
@@ -58,8 +55,6 @@ class SmartOfflineAPI {
         console.log(`🌐 Intentando conectar con API: ${endpoint} (intento ${attempt}/${retryAttempts})`)
 
         const response = await api.get(endpoint, { timeout })
-
-        // Cachear respuesta exitosa
         await offlineStorage.cacheData(cacheKey, response.data, cacheExpiry)
 
         console.log(`✅ Datos obtenidos de API: ${endpoint}`)
@@ -68,7 +63,6 @@ class SmartOfflineAPI {
         lastError = error
         console.log(`❌ Error en API (intento ${attempt}): ${error.message}`)
 
-        // Si es el último intento, intentar usar cache
         if (attempt === retryAttempts) {
           const cachedData = await offlineStorage.getCachedData(cacheKey)
           if (cachedData) {
@@ -77,7 +71,6 @@ class SmartOfflineAPI {
           }
         }
 
-        // Esperar antes del siguiente intento
         if (attempt < retryAttempts) {
           await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
         }
@@ -87,11 +80,9 @@ class SmartOfflineAPI {
     throw lastError
   }
 
-  // POST inteligente con queue offline
   async post(endpoint: string, data: any, options: SmartAPIOptions = {}): Promise<any> {
     const { forceOffline = false, retryAttempts = 1, timeout = 15000 } = options
 
-    // Si forzamos offline o la API no está disponible, usar queue
     if (forceOffline || !apiHealthChecker.isAPIHealthy()) {
       console.log(`📱 Guardando operación offline: POST ${endpoint}`)
 
@@ -99,10 +90,9 @@ class SmartOfflineAPI {
         type: "CREATE",
         endpoint,
         data,
-        timestamp: new Date().toISOString(),
+        error: null
       })
 
-      // Retornar respuesta simulada para mantener UX
       return {
         id: `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         ...data,
@@ -112,7 +102,6 @@ class SmartOfflineAPI {
       }
     }
 
-    // Intentar enviar a la API
     return await this.executePostRequest(endpoint, data, retryAttempts, timeout)
   }
 
@@ -124,14 +113,12 @@ class SmartOfflineAPI {
         console.log(`🌐 Enviando a API: POST ${endpoint} (intento ${attempt}/${retryAttempts})`)
 
         const response = await api.post(endpoint, data, { timeout })
-
         console.log(`✅ Datos enviados a API: POST ${endpoint}`)
         return response.data
       } catch (error: any) {
         lastError = error
         console.log(`❌ Error enviando a API (intento ${attempt}): ${error.message}`)
 
-        // Si es el último intento, guardar en queue offline
         if (attempt === retryAttempts) {
           console.log(`📱 Guardando en queue offline: POST ${endpoint}`)
 
@@ -139,8 +126,7 @@ class SmartOfflineAPI {
             type: "CREATE",
             endpoint,
             data,
-            timestamp: new Date().toISOString(),
-            error: error.message,
+            error: error.message
           })
 
           return {
@@ -153,7 +139,6 @@ class SmartOfflineAPI {
           }
         }
 
-        // Esperar antes del siguiente intento
         if (attempt < retryAttempts) {
           await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
         }
@@ -163,7 +148,6 @@ class SmartOfflineAPI {
     throw lastError
   }
 
-  // PUT inteligente
   async put(endpoint: string, data: any, options: SmartAPIOptions = {}): Promise<any> {
     const { forceOffline = false, retryAttempts = 1, timeout = 15000 } = options
 
@@ -174,7 +158,7 @@ class SmartOfflineAPI {
         type: "UPDATE",
         endpoint,
         data,
-        timestamp: new Date().toISOString(),
+        error: null
       })
 
       return { ...data, _isOffline: true, _pendingSync: true }
@@ -198,8 +182,7 @@ class SmartOfflineAPI {
             type: "UPDATE",
             endpoint,
             data,
-            timestamp: new Date().toISOString(),
-            error: error.message,
+            error: error.message
           })
 
           return { ...data, _isOffline: true, _pendingSync: true, _apiError: error.message }
@@ -214,7 +197,6 @@ class SmartOfflineAPI {
     throw lastError
   }
 
-  // DELETE inteligente
   async delete(endpoint: string, options: SmartAPIOptions = {}): Promise<any> {
     const { forceOffline = false, retryAttempts = 1, timeout = 10000 } = options
 
@@ -225,7 +207,7 @@ class SmartOfflineAPI {
         type: "DELETE",
         endpoint,
         data: null,
-        timestamp: new Date().toISOString(),
+        error: null
       })
 
       return { success: true, _isOffline: true, _pendingSync: true }
@@ -249,8 +231,7 @@ class SmartOfflineAPI {
             type: "DELETE",
             endpoint,
             data: null,
-            timestamp: new Date().toISOString(),
-            error: error.message,
+            error: error.message
           })
 
           return { success: true, _isOffline: true, _pendingSync: true, _apiError: error.message }
@@ -265,12 +246,10 @@ class SmartOfflineAPI {
     throw lastError
   }
 
-  // Verificar estado de la API
   async checkAPIStatus(): Promise<boolean> {
     return apiHealthChecker.isAPIHealthy()
   }
 
-  // Forzar verificación de la API
   async forceAPICheck(): Promise<void> {
     await apiHealthChecker.forceHealthCheck()
   }

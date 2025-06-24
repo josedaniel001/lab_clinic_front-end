@@ -1,5 +1,4 @@
-import api from "./api"; // Added API import
-
+import api from "./api"
 
 // Tipos de notificaciones
 export type NotificationType = "resultados" | "factura" | "orden" | "recordatorio" | "bienvenida"
@@ -86,50 +85,24 @@ export const notificacionesAPI = {
    * Obtiene la configuración de notificaciones
    */
   getConfiguracion: async (): Promise<NotificacionesConfig> => {
-    // En un entorno real, esto sería una llamada a la API
-    const response = await api.get('/configuracion/notificaciones/') // Added trailing slash
+    const response = await api.get('/configuracion/notificaciones/')
     return response.data
-
-    // Simulación con datos de prueba
-    // return new Promise((resolve) => {
-    //   setTimeout(() => {
-    //     resolve(configMock)
-    //   }, 500)
-    // })
   },
 
   /**
    * Guarda la configuración de notificaciones
    */
-  guardarConfiguracion: async (config: NotificacionesConfig): Promise<any> => { // Return type changed to any to match typical API response
-    // En un entorno real, esto sería una llamada a la API
-    const response = await api.post('/configuracion/notificaciones/', config) // Added trailing slash
+  guardarConfiguracion: async (config: NotificacionesConfig): Promise<any> => {
+    const response = await api.post('/configuracion/notificaciones/', config)
     return response.data
-
-    // Simulación con datos de prueba
-    // return new Promise((resolve) => {
-    //   setTimeout(() => {
-    //     // Actualizar la configuración mock
-    //     Object.assign(configMock, config)
-    //     resolve({ success: true })
-    //   }, 500)
-    // })
   },
 
   /**
    * Envía un email de prueba
    */
-  enviarEmailPrueba: async (email: string): Promise<any> => { // Return type changed to any to match typical API response
-    // En un entorno real, esto sería una llamada a la API
-    const response = await api.post('/configuracion/notificaciones/test/', { email }) // Added trailing slash
+  enviarEmailPrueba: async (email: string): Promise<any> => {
+    const response = await api.post('/configuracion/notificaciones/test/', { email })
     return response.data
-
-    // Simulación con datos de prueba
-    // return new Promise((resolve) => {
-    //   setTimeout(() => {
-    //     resolve({ success: true })
-    //   }, 1000)
-    // })
   },
 
   /**
@@ -140,25 +113,29 @@ export const notificacionesAPI = {
     destinatario: string,
     datos: Record<string, any>,
   ): Promise<{ success: boolean }> => {
-    // Verificar si el tipo de notificación está habilitado
     if (!configMock.notificaciones[tipo as keyof typeof configMock.notificaciones]) {
       return { success: false }
     }
 
-    // Verificar si la plantilla está activa
     if (!configMock.plantillas[tipo as keyof typeof configMock.plantillas].activo) {
       return { success: false }
     }
 
-    // Preparar los datos del email
-    
+    try {
+      const response = await api.post(`/notificaciones/${tipo}/`, {
+        to: destinatario,
+        datos,
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error al enviar notificación:", error)
+      return { success: false }
+    }
+  },
 }
 
 // Funciones de ayuda para enviar notificaciones específicas
 
-/**
- * Envía una notificación de resultados listos
- */
 export const enviarNotificacionResultados = async (
   email: string,
   paciente: any,
@@ -173,10 +150,12 @@ export const enviarNotificacionResultados = async (
   return result.success
 }
 
-/**
- * Envía una factura por email
- */
-export const enviarFactura = async (email: string, paciente: any, factura: any, laboratorio: any): Promise<boolean> => {
+export const enviarFactura = async (
+  email: string,
+  paciente: any,
+  factura: any,
+  laboratorio: any,
+): Promise<boolean> => {
   const result = await notificacionesAPI.enviarNotificacion("factura", email, {
     paciente,
     factura,
@@ -185,9 +164,6 @@ export const enviarFactura = async (email: string, paciente: any, factura: any, 
   return result.success
 }
 
-/**
- * Envía una confirmación de orden
- */
 export const enviarConfirmacionOrden = async (
   email: string,
   paciente: any,
@@ -202,9 +178,6 @@ export const enviarConfirmacionOrden = async (
   return result.success
 }
 
-/**
- * Envía un recordatorio de cita
- */
 export const enviarRecordatorioCita = async (
   email: string,
   paciente: any,
@@ -219,10 +192,11 @@ export const enviarRecordatorioCita = async (
   return result.success
 }
 
-/**
- * Envía un email de bienvenida
- */
-export const enviarEmailBienvenida = async (email: string, usuario: any, laboratorio: any): Promise<boolean> => {
+export const enviarEmailBienvenida = async (
+  email: string,
+  usuario: any,
+  laboratorio: any,
+): Promise<boolean> => {
   const result = await notificacionesAPI.enviarNotificacion("bienvenida", email, {
     usuario,
     laboratorio,
