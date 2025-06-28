@@ -2,7 +2,7 @@
 
 import { createContext, useState, useCallback, type ReactNode } from "react"
 
-type NotificationType = "success" | "info" | "warning" | "error"
+type NotificationType = "success" | "info" | "warning" | "error" | "primary"
 
 interface NotificationState {
   open: boolean

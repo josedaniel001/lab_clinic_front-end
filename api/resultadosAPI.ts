@@ -13,9 +13,9 @@ export const resultadosAPI = {
   /**
    * Obtiene las órdenes con estado pendiente
    */
-  getOrdenesPendientes: async (page?: number) => {
+  getOrdenesPendientes: async (page?: number,estado?:string) => {
     // En un entorno real, esto sería una llamada a la API
-    const baseUrl = "/ordenes/?estado=pendiente"
+    const baseUrl = estado?`/ordenes/?estado=${estado}`:"/ordenes/?estado=PENDIENTE"
     const url = page ? `${baseUrl}&page=${page}` : baseUrl
     const response = await api.get(url)
     return response.data
@@ -27,37 +27,12 @@ export const resultadosAPI = {
   /**
    * Obtiene las órdenes con estado en proceso
    */
-  getOrdenesEnProceso: async (page?: number) => {
-    // En un entorno real, esto sería una llamada a la API
-    const baseUrl = "/ordenes/?estado=procesado"
-    const url = page ? `${baseUrl}&page=${page}` : baseUrl
-    const response = await api.get(url)
-    return response.data
-
-    // Simulación con datos de prueba
-    // return mockGetOrdenesEnProceso() // Mock data removed
-  },
-
-  /**
-   * Obtiene las órdenes con estado validado
-   */
-  getOrdenesValidadas: async (page?: number) => {
-    // En un entorno real, esto sería una llamada a la API
-    const baseUrl = "/ordenes/?estado=validado"
-    const url = page ? `${baseUrl}&page=${page}` : baseUrl
-    const response = await api.get(url)
-    return response.data
-
-    // Simulación con datos de prueba
-    // return mockGetOrdenesValidadas() // Mock data removed
-  },
-
   /**
    * Obtiene los resultados de una orden específica
    */
   getResultadosByOrden: async (ordenId: string, page?: number) => {
     // En un entorno real, esto sería una llamada a la API
-    const baseUrl = `/ordenes/${ordenId}/resultados/`
+    const baseUrl = `/resultados/ordenes/${ordenId}/resultados/`
     const url = page ? `${baseUrl}?page=${page}` : baseUrl
     const response = await api.get(url)
     return response.data
@@ -69,14 +44,22 @@ export const resultadosAPI = {
   /**
    * Guarda los resultados de una orden
    */
-  saveResultados: async (ordenId: string, resultadosData: any) => {
-    // En un entorno real, esto sería una llamada a la API
-    const response = await api.post(`/ordenes/${ordenId}/resultados/`, resultadosData)
+  saveResultados: async (detalleOrdenId: number, payload: any) => {
+    console.log("RESULTADO: "+JSON.stringify(payload))
+    console.log("ID ORDEN: "+detalleOrdenId)
+    const response = await api.post(`/resultados/`, {
+      detalle_orden_id: detalleOrdenId,
+      observaciones: payload.observaciones || "",
+      validado_por: payload.validado_por || null,
+      fecha_resultado: payload.fecha_resultado || null,
+      fecha_validacion: payload.fecha_validacion || null,
+      estado: payload.estado || "PENDIENTE",
+      prioridad: payload.prioridad || "normal",
+      valores: payload.valores // array de parámetros
+    })
     return response.data
-
-    // Simulación con datos de prueba
-    // return mockSaveResultados(ordenId, resultadosData) // Mock data removed
   },
+  
 
   /**
    * Valida los resultados de una orden

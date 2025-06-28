@@ -140,6 +140,22 @@ export default function OrdenesPage() {
     setOpenDialog(true)
   }
 
+  const getStatusColor = (estado: string) => {
+    switch (estado) {
+      case "VALIDADO":
+        return { bg: "#dcfce7", text: "#166534" }
+      case "PENDIENTE":
+        return { bg: "#fef3c7", text: "#92400e" }
+      case "EN PROCESO":
+        return { bg: "#dbeafe", text: "#1e40af" }
+      case "CANCELADO":
+        return { bg: "#f3f4f6", text: "#374151" }      
+      default:
+        return { bg: "#f3f4f6", text: "#374151" }
+    }
+  }
+
+
   const handleCloseDialog = () => {
     setOpenDialog(false)
     setErrors({
@@ -228,7 +244,19 @@ export default function OrdenesPage() {
     { key: "medico_nombre", label: "Médico" },
     { key: "fecha", label: "Fecha", render: (v: string) => <DateCell value={v} /> },
     { key: "hora", label: "Hora" },
-    { key: "estado", label: "Estado", render: (v: string) => <StatusBadge status={v} /> },
+    { key: "estado", label: "Estado", render: (v: string) => 
+      {
+        const color = getStatusColor(v)              
+      return (
+        <span
+          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+          style={{ backgroundColor: color.bg, color: color.text }}
+        >   
+        {v}
+        </span>
+      )
+     }
+    }
   ]
 
   const stats = [

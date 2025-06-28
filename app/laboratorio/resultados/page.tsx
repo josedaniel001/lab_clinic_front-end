@@ -21,7 +21,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
+import { ResultadoFormExamen } from "@/components/laboratorio/ResultadoForExamen"
+
+
 import {
   TestTube,
   Clock,
@@ -29,6 +31,12 @@ import {
   AlertTriangle,
   Save,
   Edit,
+  Eye,
+  Download,
+  Stethoscope,
+  Calendar,
+  Plus,
+  Send,
   ActivityIcon as Assignment,
   FileText,
   Activity,
@@ -43,17 +51,20 @@ export default function ResultadosPage() {
 
   const [tabValue, setTabValue] = useState("pendientes")
   const [ordenes, setOrdenes] = useState([])
-  const [resultados, setResultados] = useState([])
+  const [resultadosPorDetalle, setResultadosPorDetalle] = useState<any>({})
   const [openDialog, setOpenDialog] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedOrden, setSelectedOrden] = useState<any>(null)
   const [formData, setFormData] = useState<any>({})
+  const [pagination, setPagination] = useState({ page: 1, next: null, previous: null, total: 0 })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [limit, setLimit] = useState(5)
   const [errors, setErrors] = useState<any>({})
 
   useEffect(() => {
     fetchOrdenes()
-  }, [tabValue])
+  }, [tabValue,currentPage,limit])
 
   const fetchOrdenes = async (showLoading = true) => {
     if (showLoading) {
@@ -64,19 +75,23 @@ export default function ResultadosPage() {
 
     try {
       let data
+      let lista
       if (tabValue === "pendientes") {
-        data = await resultadosAPI.getOrdenesPendientes()
+        data = await resultadosAPI.getOrdenesPendientes(currentPage,"PENDIENTE")
+        lista = Array.isArray(data?.results) ? data.results : []
       } else if (tabValue === "proceso") {
-        data = await resultadosAPI.getOrdenesEnProceso()
+        data = await resultadosAPI.getOrdenesPendientes(currentPage,"EN PROCESO")
+        lista = Array.isArray(data?.results) ? data.results : []
       } else {
-        data = await resultadosAPI.getOrdenesValidadas()
+        data = await resultadosAPI.getOrdenesPendientes(currentPage,"VALIDADO")
+        lista = Array.isArray(data?.results) ? data.results : []
       }
-      setOrdenes(data)
+      setOrdenes(lista)
       if (!showLoading) {
-        showNotification("Datos actualizados correctamente", "success")
+        showNotification("Datos actualizados correctamente", "info")
       }
     } catch (error) {
-      showNotification("Error al cargar órdenes", "error")
+      showNotification("Error al cargar órdenes", "warning")
     } finally {
       if (showLoading) {
         hideLoader()
@@ -95,7 +110,7 @@ export default function ResultadosPage() {
     try {
       setSelectedOrden(orden)
       const resultadosData = await resultadosAPI.getResultadosByOrden(orden.id)
-      setResultados(resultadosData)
+      setResultadosPorDetalle(resultadosData)
 
       const initialFormData: any = {}
       resultadosData.forEach((resultado: any) => {
@@ -117,7 +132,7 @@ export default function ResultadosPage() {
   const handleCloseDialog = () => {
     setOpenDialog(false)
     setSelectedOrden(null)
-    setResultados([])
+    setResultadosPorDetalle([])
     setFormData({})
     setErrors({})
   }
@@ -125,12 +140,17 @@ export default function ResultadosPage() {
   const handleSaveResults = async () => {
     showLoader()
     try {
-      const resultadosData = Object.keys(formData).map((resultadoId) => ({
-        id: resultadoId,
-        ...formData[resultadoId],
+      const payloads = Object.entries(resultadosPorDetalle).map(([detalleId, parametros]) => ({
+        detalle_orden_id: detalleId,
+        valores: parametros.valores,
+        observaciones: parametros.observaciones,
+        estado: tabValue=="pendientes"?"EN PROCESO":tabValue=="en proceso"?"VALIDADO":"COMPLETADO",
+        prioridad: "normal"
       }))
-
-      await resultadosAPI.saveResultados(selectedOrden.id, resultadosData)
+      
+      for (const payload of payloads) {
+        await resultadosAPI.saveResultados(payload.detalle_orden_id, payload)
+      }
       showNotification("Resultados guardados correctamente", "success")
       handleCloseDialog()
       fetchOrdenes()
@@ -140,6 +160,7 @@ export default function ResultadosPage() {
       hideLoader()
     }
   }
+  
 
   const handleValidateResults = async () => {
     showLoader()
@@ -162,17 +183,139 @@ export default function ResultadosPage() {
 
   const filteredOrdenes = ordenes.filter(
     (orden: any) =>
-      orden.paciente.toLowerCase().includes(searchTerm.toLowerCase()) || orden.codigo.includes(searchTerm),
+      orden.paciente_nombre.toLowerCase().includes(searchTerm.toLowerCase()) 
+    || orden.codigo.includes(searchTerm),
   )
 
+  const getStatusColor = (estado: string) => {
+    switch (estado) {
+      case "validado":
+        return { bg: "#dcfce7", text: "#166534" }
+      case "pendiente":
+        return { bg: "#fef3c7", text: "#92400e" }
+      case "en proceso":
+        return { bg: "#dbeafe", text: "#1e40af" }
+      case "cancelado":
+        return { bg: "#f3f4f6", text: "#374151" }
+      case "entregado":
+          return { bg: "#f3f4f6", text: "#374151" }
+      default:
+        return { bg: "#f3f4f6", text: "#374151" }
+    }
+  }
+
+  const getPriorityColor = (prioridad: string) => {
+    switch (prioridad) {
+      case "alta":
+        return { bg: "#fecaca", text: "#dc2626" }
+      case "media":
+        return { bg: "#fef3c7", text: "#d97706" }
+      case "normal":
+        return { bg: "#dcfce7", text: "#16a34a" }
+      default:
+        return { bg: "#f3f4f6", text: "#6b7280" }
+    }
+  }
+
   const columns = [
-    { key: "codigo", label: "Código", className: "font-medium" },
-    { key: "paciente", label: "Paciente", className: "font-medium text-gray-900" },
-    { key: "fecha", label: "Fecha" },
-    { key: "hora", label: "Hora" },
-    { key: "examenes", label: "Exámenes", className: "text-center" },
+    {
+      key: "codigo",
+      label: "N° Orden",
+      className: "font-medium",
+      render: (value: string) => <span style={{ color: "#2563eb" }}>{value}</span>,
+    },
+    {
+      key: "paciente_nombre",
+      label: "Paciente",
+      render: (value: string, row: any) => (
+        <div>
+          <div style={{ color: "#1f2937", fontWeight: "500" }}>{value}</div>
+          <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>ID: {row.paciente}</div>
+        </div>
+      ),
+    },
+    {
+      key: "detalles",
+      label: "Examen",
+      render: (value: any, row: any) => {
+        const total = row?.total_examenes ?? 0;
+    
+        return total <= 3 ? (
+          <div className="space-y-1">
+            {Array.isArray(value) && value.length > 0 ? (
+              value.map((detalle: any, i: number) => (
+                <div key={i} className="text-gray-700 text-sm">
+                  {detalle.examen?.codigo} - {detalle.examen?.nombre}
+                </div>
+              ))
+            ) : (
+              <span className="text-gray-500 italic">Sin exámenes</span>
+            )}
+          </div>
+        ) : (
+          <span className="text-gray-700">{total} exámenes solicitados</span>
+        );
+      }
+    },
+    {
+      key: "medico_nombre",
+      label: "Médico",
+      render: (value: string) => (
+        <div className="flex items-center gap-1">
+          <Stethoscope className="h-3 w-3 text-gray-400" />
+          <span style={{ color: "#4b5563" }}>{value}</span>
+        </div>
+      ),
+    },
+    {
+      key: "fecha",
+      label: "Fecha Orden",
+      render: (value: string,row: any) => (
+        <div className="flex items-center gap-1">
+          <Calendar className="h-3 w-3 text-gray-400" />
+          <span style={{ color: "#4b5563" }}>{value} : {row.hora}</span>
+        </div>
+      ),
+    },
+    {
+      key: "prioridad",
+      label: "Prioridad",
+      render: (value: string,row:any) => {        
+        const color = getPriorityColor(value.toLowerCase())
+        return (
+          <span
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
+            style={{ backgroundColor: color.bg, color: color.text }}
+          >
+            {value}
+          </span>
+        )
+      },
+    },
+    {
+      key: "estado",
+      label: "Estado",
+      render: (value: string) => {
+        const color = getStatusColor(value.toLowerCase())
+        const labels = {
+          pendiente: "Pendiente",
+          en_proceso: "En Proceso",
+          pendiente_validacion: "Pendiente Validación",
+          completado: "Completado",
+        }
+        return (
+          <span
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            style={{ backgroundColor: color.bg, color: color.text }}
+          >
+            {labels[value as keyof typeof labels] || value}
+          </span>
+        )
+      },
+    },
   ]
 
+ 
   const getTabStats = () => {
     const pendientes = ordenes.filter((o: any) => tabValue === "pendientes").length
     const proceso = ordenes.filter((o: any) => tabValue === "proceso").length
@@ -183,42 +326,94 @@ export default function ResultadosPage() {
         title: "Pendientes",
         value: pendientes,
         icon: <Clock className="h-8 w-8 text-white" />,
-        color: "bg-gradient-to-r from-orange-500 to-orange-600",
+        color: "info",
         trend: "Requieren atención",
       },
       {
         title: "En Proceso",
         value: proceso,
         icon: <Activity className="h-8 w-8 text-white" />,
-        color: "bg-gradient-to-r from-blue-500 to-blue-600",
+        color: "warning",
         trend: "En análisis",
       },
       {
         title: "Validados",
         value: validados,
         icon: <CheckCircle className="h-8 w-8 text-white" />,
-        color: "bg-gradient-to-r from-green-500 to-green-600",
+        color: "success",
         trend: "Completados",
       },
       {
         title: "Total Órdenes",
         value: ordenes.length,
         icon: <FileText className="h-8 w-8 text-white" />,
-        color: "bg-gradient-to-r from-purple-500 to-purple-600",
+        color: "secondary",
         trend: "Todas las órdenes",
       },
     ]
   }
 
   const tableActions = (row: any) => (
+    <>    
     <Button
       variant="ghost"
       size="sm"
-      onClick={() => handleOpenDialog(row)}
-      className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-600"
+      onClick={() => handleOpenView(row)}
+      className="h-8 w-8 p-0"
+      style={{ color: "#2563eb" }}
+      title="Ver resultado"
     >
-      {tabValue === "validados" ? <Assignment className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+      <Eye className="h-4 w-4" />
     </Button>
+    {hasPermission("editar_resultado") && (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => handleOpenDialog(row)}
+        className="h-8 w-8 p-0"
+        style={{ color: "#2563eb" }}
+        title="Generar Resultado"
+      >
+        <Edit className="h-4 w-4" />
+      </Button>
+    )}
+    {row.estado === "pendiente_validacion" && hasPermission("validar_resultado") && (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => handleValidate(row.id)}
+        className="h-8 w-8 p-0"
+        style={{ color: "#16a34a" }}
+        title="Validar"
+      >
+        <CheckCircle className="h-4 w-4" />
+      </Button>
+    )}
+    {row.estado === "completado" && (
+      <>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleDownloadPDF(row)}
+          className="h-8 w-8 p-0"
+          style={{ color: "#7c3aed" }}
+          title="Descargar PDF"
+        >
+          <Download className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleSendEmail(row)}
+          className="h-8 w-8 p-0"
+          style={{ color: "#059669" }}
+          title="Enviar por correo"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </>
+    )}
+  </>
   )
 
   const tabsContent = (
@@ -279,150 +474,84 @@ export default function ResultadosPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TestTube className="h-5 w-5" />
-              {tabValue === "validados" ? "Ver Resultados" : "Cargar Resultados"}
+              {tabValue === "pendientes" ? "Crear Resultado" : 
+               tabValue==="validados"?"Ver Resultados":"Validar Resultados" }
             </DialogTitle>
             <DialogDescription>
-              {selectedOrden && `Orden: ${selectedOrden.codigo} - Paciente: ${selectedOrden.paciente}`}
+              {selectedOrden && `Orden: ${selectedOrden.codigo} - Paciente: ${selectedOrden.paciente_nombre}`}
             </DialogDescription>
           </DialogHeader>
 
           {selectedOrden && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Información de la Orden</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Código</Label>
-                    <p className="text-sm font-medium">{selectedOrden.codigo}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Paciente</Label>
-                    <p className="text-sm font-medium">{selectedOrden.paciente}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Fecha</Label>
-                    <p className="text-sm">{selectedOrden.fecha}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Hora</Label>
-                    <p className="text-sm">{selectedOrden.hora}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Resultados</h3>
-                {resultados.map((resultado: any) => (
-                  <Card key={resultado.id}>
-                    <CardContent className="p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                        <div>
-                          <Label className="text-sm font-medium">{resultado.examen}</Label>
-                          <p className="text-xs text-gray-500">Código: {resultado.codigo_abreviado}</p>
-                        </div>
-
-                        <div>
-                          <Label htmlFor={`valor-${resultado.id}`}>Valor</Label>
-                          <div className="flex">
-                            <Input
-                              id={`valor-${resultado.id}`}
-                              value={formData[resultado.id]?.valor_numerico || ""}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  [resultado.id]: {
-                                    ...formData[resultado.id],
-                                    valor_numerico: e.target.value,
-                                  },
-                                })
-                              }
-                              disabled={tabValue === "validados"}
-                              className="rounded-r-none"
-                            />
-                            <div className="px-3 py-2 bg-gray-100 border border-l-0 rounded-r text-sm text-gray-600">
-                              {resultado.dimensional}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label className="text-sm">Rango Normal</Label>
-                          <p className="text-sm text-gray-600">
-                            {resultado.intervalo_referencia_min} - {resultado.intervalo_referencia_max}
-                          </p>
-                        </div>
-
-                        <div>
-                          {formData[resultado.id]?.valor_numerico && (
-                            <Badge
-                              variant={
-                                Number(formData[resultado.id]?.valor_numerico) < resultado.intervalo_referencia_min ||
-                                Number(formData[resultado.id]?.valor_numerico) > resultado.intervalo_referencia_max
-                                  ? "destructive"
-                                  : "default"
-                              }
-                              className="flex items-center gap-1"
-                            >
-                              {Number(formData[resultado.id]?.valor_numerico) < resultado.intervalo_referencia_min ||
-                              Number(formData[resultado.id]?.valor_numerico) > resultado.intervalo_referencia_max ? (
-                                <>
-                                  <AlertTriangle className="h-3 w-3" />
-                                  Fuera de rango
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-3 w-3" />
-                                  Normal
-                                </>
-                              )}
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="md:col-span-4">
-                          <Label htmlFor={`obs-${resultado.id}`}>Observación</Label>
-                          <Textarea
-                            id={`obs-${resultado.id}`}
-                            value={formData[resultado.id]?.observacion_especifica || ""}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                [resultado.id]: {
-                                  ...formData[resultado.id],
-                                  observacion_especifica: e.target.value,
-                                },
-                              })
-                            }
-                            disabled={tabValue === "validados"}
-                            rows={2}
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Información de la Orden</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium text-gray-600">Código</Label>
+                <p className="text-sm font-medium">{selectedOrden.codigo}</p>
               </div>
-            </div>
-          )}
+              <div>
+                <Label className="text-sm font-medium text-gray-600">Paciente</Label>
+                <p className="text-sm font-medium">{selectedOrden.paciente_nombre}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-gray-600">Fecha</Label>
+                <p className="text-sm">{selectedOrden.fecha}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-gray-600">Hora</Label>
+                <p className="text-sm">{selectedOrden.hora}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Resultados</h3>
+            {selectedOrden.detalles.length === 0 ? (
+        <p className="text-gray-500 italic">No hay exámenes disponibles para esta orden.</p>
+      ) : tabValue === "pendientes" ?(selectedOrden?.detalles.map((detalle: any) => (
+        <ResultadoFormExamen
+          key={detalle.id}
+          detalle={detalle}
+          onSave={(resultado, parametros) => {
+            setResultadosPorDetalle((prev: any) => ({
+              ...prev,
+              [resultado]: parametros
+            }))
+          }}
+        />
+      ))):<p className="text-gray-500 italic">Componente para mostrar los resultados de la BD por cada examen</p>}      
+    </div>
+    
+
+  </div>
+)}
+
 
           <DialogFooter>
             <Button variant="outline" onClick={handleCloseDialog}>
               Cerrar
             </Button>
-            {tabValue !== "validados" && (
-              <>
-                <Button onClick={handleSaveResults} variant="outline" className="gap-2">
-                  <Save className="h-4 w-4" />
-                  Guardar
-                </Button>
+            
+            {tabValue == "en proceso" && (
+              <>                
                 {hasPermission("validar_resultados") && (
                   <Button onClick={handleValidateResults} className="gap-2">
                     <CheckCircle className="h-4 w-4" />
                     Validar
                   </Button>
                 )}
+              </>
+            )}
+            {tabValue == "pendientes" && (
+              <>
+                <Button onClick={handleSaveResults} variant="outline" className="gap-2">
+                  <Send className="h-4 w-4" />
+                  Mandar a Validar
+                </Button>                
               </>
             )}
           </DialogFooter>

@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Stethoscope, Plus, Edit, Trash2, UserCheck, Users, Award, Activity, Phone, Mail, MapPin } from "lucide-react"
 import { useCatalogosPorPais } from "@/hooks/useCatalogoPorPais"
 import { medicosAPI } from "@/api/medicosAPI"
+import { Combobox } from "@/components/ui/combobox"
 
 export default function MedicosPage() {
   const { showLoader, hideLoader } = useLoader()
@@ -367,6 +368,11 @@ const paginatedMedico = medicos.map((m: any) => {
       medico.correo.toLowerCase().includes(searchTerm.toLowerCase()),
   )*/
 
+      const handleChange = (name: string, value: string) => {        
+        setFormData(prev => ({ ...prev, [name]: value }))        
+        setErrors(prev => ({ ...prev, [name]: "" }))
+      }
+
   const especialidades = [...new Set(medicos.map((m: any) => m.especialidad))].length
   const medicosActivos = medicos.filter((m: any) => m.activo !== false).length
   const promedioOrdenes = /*isNaN(Math.round(
@@ -487,7 +493,7 @@ const paginatedMedico = medicos.map((m: any) => {
           <Plus className="h-4 w-4" />
           Nuevo Médico
         </Button>      
-      <ModalContent className="sm:max-w-2xl">
+      <ModalContent className="sm:max-w-[2xl] max-h-[100vh] overflow-y-auto width-auto">
         <ModalHeader>
           <ModalTitle style={{ color: "#1f2937" }}>{isEditing ? "Editar Médico" : "Nuevo Médico"}</ModalTitle>
           <ModalDescription style={{ color: "#6b7280" }}>
@@ -511,27 +517,42 @@ const paginatedMedico = medicos.map((m: any) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="especialidades" style={{ color: "#374151" }}>
+          <div>
+          <Label htmlFor="especialidades" style={{ color: "#374151" }}>
               Especialidad Medica*
             </Label>
-            <Select
-              value={formData.especialidades}
-              onValueChange={(value) => setFormData({ ...formData, especialidades: value })}
-            >
-              <SelectTrigger  style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }} className={errors.especialidades ? "border-red-500" : ""}>
-                <SelectValue placeholder="Seleccionar especialidad" />
-              </SelectTrigger>
-              <SelectContent style={{ backgroundColor: "white", color: "#1f2937" }}>
-              {catalgoEspecialidad.map((o)=>(
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
+                <Combobox
+                    items={catalgoEspecialidad.map(p => ({
+                      value: String(p.value),
+                      label: String(p.label),
+                    }))}
+                    value={formData.especialidades}
+                    onChange={(val) =>{
+                        console.log("Especialidad medica seleccionada:", val) // ✅ Debe imprimirse
+                        handleChange("especialidades", val)
+                      }}
+                    placeholder="Especialidad Medica"
+                    error={errors.especialidades && <p className="text-sm text-red-500">{errors.especialidades}</p>}
+                  />
+              </div>
 
-              ))}                              
+                                    
+          </div>
+
+          <div className="space-y-2 md:col-span-2">            
+            <Label htmlFor="tipo_documento">Tipo de Documento *</Label>
+            <Select value={formData.tipo_documento} onValueChange={(value) => setFormData({ ...formData, tipo_documento: value })}>
+              <SelectTrigger className={errors.tipo_documento ? "border-red-500" : ""}>
+                <SelectValue placeholder="Seleccionar sexo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DPI">DPI</SelectItem>
+                <SelectItem value="CC">Carnet Medico</SelectItem>
+                <SelectItem value="CI">Celula Extranjera</SelectItem>
               </SelectContent>
             </Select>
-            {errors.especialidades && <p className="text-sm text-red-500">{errors.especialidades}</p>}
-          </div>
+            {errors.tipo_documento && <p className="text-sm text-red-500">{errors.tipo_documento}</p>}          
+          </div>  
 
           <div className="space-y-2">
             <Label htmlFor="codigo_laboratorio" style={{ color: "#374151" }}>
@@ -546,6 +567,35 @@ const paginatedMedico = medicos.map((m: any) => {
             />
             {errors.codigo_laboratorio && <p className="text-sm text-red-500">{errors.codigo_laboratorio}</p>}
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="codigo_laboratorio" style={{ color: "#374151" }}>
+              Numero de Documento 
+            </Label>
+            <Input
+              id="numero_documento"
+              value={formData.numero_documento}
+              onChange={(e) => setFormData({ ...formData, numero_documento: e.target.value })}
+              style={{ backgroundColor: "white", color: "#1f2937", border: "1px solid #d1d5db" }}
+              className={errors.numero_documento ? "border-red-500" : ""}
+            />
+            {errors.numero_documento && <p className="text-sm text-red-500">{errors.numero_documento}</p>}
+          </div>
+
+          <div className="space-y-2 ">            
+            <Label htmlFor="sexo">Sexo *</Label>
+            <Select value={formData.sexo} onValueChange={(value) => setFormData({ ...formData, sexo: value })}>
+              <SelectTrigger className={errors.sexo ? "border-red-500" : ""}>
+                <SelectValue placeholder="Seleccionar sexo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="M">Masculino</SelectItem>
+                <SelectItem value="F">Femenino</SelectItem>
+                <SelectItem value="O">Otro</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.sexo && <p className="text-sm text-red-500">{errors.sexo}</p>}          
+          </div>  
 
           <div className="space-y-2">
             <Label htmlFor="celular" style={{ color: "#374151" }}>
@@ -602,21 +652,7 @@ const paginatedMedico = medicos.map((m: any) => {
               className={errors.direccion_consultorio ? "border-red-500" : ""}
             />
             {errors.direccion_consultorio && <p className="text-sm text-red-500">{errors.direccion_consultorio}</p>}
-          </div>
-          <div className="space-y-2 md:col-span-2">            
-            <Label htmlFor="sexo">Sexo *</Label>
-            <Select value={formData.sexo} onValueChange={(value) => setFormData({ ...formData, sexo: value })}>
-              <SelectTrigger className={errors.sexo ? "border-red-500" : ""}>
-                <SelectValue placeholder="Seleccionar sexo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="M">Masculino</SelectItem>
-                <SelectItem value="F">Femenino</SelectItem>
-                <SelectItem value="O">Otro</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.sexo && <p className="text-sm text-red-500">{errors.sexo}</p>}          
-          </div>          
+          </div>       
 
            <div className="space-y-2 md:col-span-2">
                        <Label htmlFor="departamento">Departamento *</Label>
