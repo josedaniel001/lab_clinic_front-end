@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable } from "@/components/ui/DataTable"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { ResultadoValidarExamen } from "@/components/laboratorio/ResultadoValidarExamen"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -144,7 +144,7 @@ export default function ResultadosPage() {
         detalle_orden_id: detalleId,
         valores: parametros.valores,
         observaciones: parametros.observaciones,
-        estado: tabValue=="pendientes"?"EN PROCESO":tabValue=="en proceso"?"VALIDADO":"COMPLETADO",
+        estado: tabValue=="pendientes"?"EN PROCESO":tabValue=="proceso"?"VALIDADO":"COMPLETADO",
         prioridad: "normal"
       }))
       
@@ -165,12 +165,19 @@ export default function ResultadosPage() {
   const handleValidateResults = async () => {
     showLoader()
     try {
-      const resultadosData = Object.keys(formData).map((resultadoId) => ({
-        id: resultadoId,
-        ...formData[resultadoId],
+      const resultadosData = resultadosPorDetalle.map((resultado: any) => ({
+        id: resultado.id,  // ID del resultado
+        observaciones: resultado.observaciones,
+        fecha_validacion: new Date().toISOString().slice(0,10), // YYYY-MM-DD
+        valores: resultado.valores,  // Lista de valores corregidos
       }))
-
-      await resultadosAPI.validateResultados(selectedOrden.id, resultadosData, user?.id_usuario)
+  
+      await resultadosAPI.validateResultados(
+        resultadosPorDetalle[0].id, // Usa el primer resultado como PK en la URL
+        resultadosData,
+        user?.full_name,
+      )
+  
       showNotification("Resultados validados correctamente", "success")
       handleCloseDialog()
       fetchOrdenes()
@@ -180,6 +187,8 @@ export default function ResultadosPage() {
       hideLoader()
     }
   }
+  
+  
 
   const filteredOrdenes = ordenes.filter(
     (orden: any) =>
@@ -365,7 +374,7 @@ export default function ResultadosPage() {
     >
       <Eye className="h-4 w-4" />
     </Button>
-    {hasPermission("editar_resultado") && (
+    {row.estado === "PENDIENTE" && hasPermission("editar_resultado") && (
       <Button
         variant="ghost"
         size="sm"
@@ -377,11 +386,11 @@ export default function ResultadosPage() {
         <Edit className="h-4 w-4" />
       </Button>
     )}
-    {row.estado === "pendiente_validacion" && hasPermission("validar_resultado") && (
+    {row.estado === "EN PROCESO" && hasPermission("validar_resultado") && (
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => handleValidate(row.id)}
+        onClick={() => handleOpenDialog(row)}
         className="h-8 w-8 p-0"
         style={{ color: "#16a34a" }}
         title="Validar"
@@ -389,7 +398,7 @@ export default function ResultadosPage() {
         <CheckCircle className="h-4 w-4" />
       </Button>
     )}
-    {row.estado === "completado" && (
+    {row.estado === "VALIDADO" && (
       <>
         <Button
           variant="ghost"
@@ -508,23 +517,47 @@ export default function ResultadosPage() {
             </CardContent>
           </Card>
 
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Resultados</h3>
-            {selectedOrden.detalles.length === 0 ? (
-        <p className="text-gray-500 italic">No hay exámenes disponibles para esta orden.</p>
-      ) : tabValue === "pendientes" ?(selectedOrden?.detalles.map((detalle: any) => (
-        <ResultadoFormExamen
-          key={detalle.id}
-          detalle={detalle}
-          onSave={(resultado, parametros) => {
-            setResultadosPorDetalle((prev: any) => ({
-              ...prev,
-              [resultado]: parametros
-            }))
-          }}
-        />
-      ))):<p className="text-gray-500 italic">Componente para mostrar los resultados de la BD por cada examen</p>}      
-    </div>
+        <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Resultados</h3>
+
+        {selectedOrden.detalles.length === 0 ? (
+          <p className="text-gray-500 italic">
+            No hay exámenes disponibles para esta orden.
+          </p>
+        ) : tabValue === "pendientes" ? (
+          selectedOrden?.detalles.map((detalle: any) => (
+            <ResultadoFormExamen
+              key={detalle.id}
+              detalle={detalle}
+              onSave={(resultado, parametros) => {
+                setResultadosPorDetalle((prev: any) => ({
+                  ...prev,
+                  [resultado]: parametros
+                }))
+              }}
+            />
+          ))
+        ) : tabValue === "proceso" && resultadosPorDetalle?.length > 0 ? (
+          resultadosPorDetalle.map((resultado: any) => (
+            <ResultadoValidarExamen
+              key={resultado.id}
+              resultado={resultado}
+              onValidate={(id, data) => {
+                setResultadosPorDetalle((prev: any) =>
+                  prev.map((r: any) =>
+                    r.id === id ? { ...r, ...data } : r
+                  )
+                )
+              }}
+            />
+          ))
+        ) : (
+          <p className="text-gray-500 italic">
+            No hay resultados para validar.
+          </p>
+        )}
+      </div>
+
     
 
   </div>
@@ -536,7 +569,7 @@ export default function ResultadosPage() {
               Cerrar
             </Button>
             
-            {tabValue == "en proceso" && (
+            {tabValue == "proceso" && (
               <>                
                 {hasPermission("validar_resultados") && (
                   <Button onClick={handleValidateResults} className="gap-2">

@@ -1,7 +1,7 @@
 "use client"
 
-import type React from "react"
-import { useState } from "react"
+
+import { useState,useEffect  } from "react"
 import { useLoader } from "@/hooks/useLoader"
 import { useNotification } from "@/hooks/useNotification"
 import { usePermissions } from "@/hooks/usePermissions"
@@ -35,52 +35,84 @@ import {
   Assessment as AssessmentIcon,
   Backup as BackupIcon,
 } from "@mui/icons-material"
+import { configuracionAPI } from "@/api/configuracionAPI"
+
 
 export default function ConfiguracionPage() {
   const { showLoader, hideLoader } = useLoader()
   const { showNotification } = useNotification()
   const { hasPermission } = usePermissions()
-
+  const [configId, setConfigId] = useState<number | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [generalConfig, setGeneralConfig] = useState({
-    nombreLaboratorio: "LaboFutura",
-    direccion: "Av. Principal 123",
-    telefono: "1234567890",
-    correo: "contacto@labofutura.com",
-    logo: "/logo-labofutura.png",
+    nombre_laboratorio: "",
+    direccion: "",
+    telefono: "",
+    correo: "",
+    logo: "",
   })
 
   const [emailConfig, setEmailConfig] = useState({
     enviarResultados: true,
     enviarNotificaciones: true,
-    servidorSMTP: "smtp.example.com",
-    puertoSMTP: "587",
-    usuarioSMTP: "notificaciones@labofutura.com",
-    passwordSMTP: "********",
+    servidorSMTP: "",
+    puertoSMTP: "",
+    usuarioSMTP: "",
+    passwordSMTP: "",
   })
 
   const [reportesConfig, setReportesConfig] = useState({
-    formatoPDF: "A4",
+    formatoPDF: "",
     mostrarLogo: true,
     mostrarFirma: true,
-    colorEncabezado: "#1976d2",
-    piePagina: "© LaboFutura - Todos los derechos reservados",
+    colorEncabezado: "",
+    piePagina: "",
   })
 
   const [backupConfig, setBackupConfig] = useState({
     backupAutomatico: true,
-    frecuenciaBackup: "diario",
-    horaBackup: "03:00",
-    rutaBackup: "/backups",
+    frecuenciaBackup: "",
+    horaBackup: "",
+    rutaBackup: "",
   })
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
     try {
-      // Simular carga de configuración
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const config = await configuracionAPI.getConfiguracion()
+      if (config) {
+        setConfigId(config.id)
+        setGeneralConfig({
+          nombre_laboratorio: config.nombre_laboratorio,
+          direccion: config.direccion,
+          telefono: config.telefono,
+          correo: config.correo,
+          logo: config.logo,
+        })
+        setEmailConfig({
+          enviarResultados: config.enviar_resultados,
+          enviarNotificaciones: config.enviar_notificaciones,
+          servidorSMTP: config.servidor_smtp,
+          puertoSMTP: config.puerto_smtp,
+          usuarioSMTP: config.usuario_smtp,
+          passwordSMTP: config.password_smtp,
+        })
+        setReportesConfig({
+          formatoPDF: config.formato_pdf,
+          mostrarLogo: config.mostrar_logo,
+          mostrarFirma: config.mostrar_firma,
+          colorEncabezado: config.color_encabezado,
+          piePagina: config.pie_pagina,
+        })
+        setBackupConfig({
+          backupAutomatico: config.backup_automatico,
+          frecuenciaBackup: config.frecuencia_backup,
+          horaBackup: config.hora_backup.slice(0, 5),
+          rutaBackup: config.ruta_backup,
+        })
+      }
       showNotification("Configuración actualizada", "success")
-    } catch (error) {
+    } catch {
       showNotification("Error al actualizar configuración", "error")
     } finally {
       setIsRefreshing(false)
@@ -93,6 +125,16 @@ export default function ConfiguracionPage() {
       ...generalConfig,
       [name]: value,
     })
+  }
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setGeneralConfig({
+        ...generalConfig,
+        logo: file,  // Guardas el objeto File
+      })
+      showNotification(`Logo "${file.name}" listo para subir`, "info")
+    }
   }
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,8 +172,50 @@ export default function ConfiguracionPage() {
   const handleSaveConfig = async (configType: string) => {
     showLoader()
     try {
-      // En un entorno real, aquí se llamaría a la API para guardar la configuración
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const formData = new FormData()
+  
+      if (configType === "general") {
+        formData.append("nombre_laboratorio", generalConfig.nombre_laboratorio)
+        formData.append("direccion", generalConfig.direccion)
+        formData.append("telefono", generalConfig.telefono)
+        formData.append("correo", generalConfig.correo)
+  
+        if (generalConfig.logo && generalConfig.logo instanceof File) {
+          formData.append("logo", generalConfig.logo)
+        }
+      }
+  
+      if (configType === "email") {
+        formData.append("enviar_resultados", String(emailConfig.enviarResultados))
+        formData.append("enviar_notificaciones", String(emailConfig.enviarNotificaciones))
+        formData.append("servidor_smtp", emailConfig.servidorSMTP)
+        formData.append("puerto_smtp", emailConfig.puertoSMTP)
+        formData.append("usuario_smtp", emailConfig.usuarioSMTP)
+        formData.append("password_smtp", emailConfig.passwordSMTP)
+      }
+  
+      if (configType === "reportes") {
+        formData.append("formato_pdf", reportesConfig.formatoPDF)
+        formData.append("mostrar_logo", String(reportesConfig.mostrarLogo))
+        formData.append("mostrar_firma", String(reportesConfig.mostrarFirma))
+        formData.append("color_encabezado", reportesConfig.colorEncabezado)
+        formData.append("pie_pagina", reportesConfig.piePagina)
+      }
+  
+      if (configType === "backup") {
+        formData.append("backup_automatico", String(backupConfig.backupAutomatico))
+        formData.append("frecuencia_backup", backupConfig.frecuenciaBackup)
+        formData.append("hora_backup", backupConfig.horaBackup)
+        formData.append("ruta_backup", backupConfig.rutaBackup)
+      }
+  
+      // ✅ Ver qué se envía
+      for (const pair of formData.entries()) {
+        console.log(pair[0] + ": " + pair[1])
+      }
+  
+      await configuracionAPI.updateConfiguracion(formData)
+  
       showNotification("Configuración guardada correctamente", "success")
     } catch (error) {
       showNotification("Error al guardar configuración", "error")
@@ -139,6 +223,7 @@ export default function ConfiguracionPage() {
       hideLoader()
     }
   }
+  
 
   const handleBackupNow = async () => {
     showLoader()
@@ -152,6 +237,52 @@ export default function ConfiguracionPage() {
       hideLoader()
     }
   }
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      showLoader()
+      try {
+        const config = await configuracionAPI.getConfiguracion()
+        if (config) {
+          setConfigId(config.id)
+          setGeneralConfig({
+            nombre_laboratorio: config.nombre_laboratorio,
+            direccion: config.direccion,
+            telefono: config.telefono,
+            correo: config.correo,
+            logo: config.logo,
+          })
+          setEmailConfig({
+            enviarResultados: config.enviar_resultados,
+            enviarNotificaciones: config.enviar_notificaciones,
+            servidorSMTP: config.servidor_smtp,
+            puertoSMTP: config.puerto_smtp,
+            usuarioSMTP: config.usuario_smtp,
+            passwordSMTP: config.password_smtp,
+          })
+          setReportesConfig({
+            formatoPDF: config.formato_pdf,
+            mostrarLogo: config.mostrar_logo,
+            mostrarFirma: config.mostrar_firma,
+            colorEncabezado: config.color_encabezado,
+            piePagina: config.pie_pagina,
+          })
+          setBackupConfig({
+            backupAutomatico: config.backup_automatico,
+            frecuenciaBackup: config.frecuencia_backup,
+            horaBackup: config.hora_backup.slice(0, 5),
+            rutaBackup: config.ruta_backup,
+          })
+        }
+      } catch {
+        showNotification("Error al cargar configuración", "error")
+      } finally {
+        hideLoader()
+      }
+    }
+  
+    fetchConfig()
+  }, [])
 
   // Estadísticas para las cards
   const stats = [
@@ -222,8 +353,8 @@ export default function ConfiguracionPage() {
                   <TextField
                     fullWidth
                     label="Nombre del Laboratorio"
-                    name="nombreLaboratorio"
-                    value={generalConfig.nombreLaboratorio}
+                    name="nombre_laboratorio"
+                    value={generalConfig.nombre_laboratorio}
                     onChange={handleGeneralChange}
                   />
                 </Grid>
@@ -254,6 +385,33 @@ export default function ConfiguracionPage() {
                     onChange={handleGeneralChange}
                   />
                 </Grid>
+
+                <Grid item xs={12}>
+                    <Typography variant="subtitle1">Logo del Laboratorio</Typography>
+                    <Button variant="outlined" component="label">
+                      Seleccionar Logo
+                      <input
+                        type="file"
+                        accept="image/*,.svg"
+                        hidden
+                        onChange={(e) => handleLogoChange(e)}
+                      />
+                    </Button>
+                    {generalConfig.logo && (
+                      <Box mt={2}>
+                        <Typography variant="body2">Vista Previa:</Typography>
+                        <img
+                          src={
+                            typeof generalConfig.logo === "string"
+                              ? generalConfig.logo
+                              : URL.createObjectURL(generalConfig.logo)
+                          }
+                          alt="labofutura.png"
+                          style={{ maxWidth: "200px", height: "auto" }}
+                        />
+                      </Box>
+                    )}
+                 </Grid>
               </Grid>
             </CardContent>
             <CardActions sx={{ justifyContent: "flex-end", p: 2 }}>
@@ -496,9 +654,9 @@ export default function ConfiguracionPage() {
                       onChange={handleBackupChange}
                       disabled={!backupConfig.backupAutomatico}
                     >
-                      <MenuItem value="diario">Diario</MenuItem>
-                      <MenuItem value="semanal">Semanal</MenuItem>
-                      <MenuItem value="mensual">Mensual</MenuItem>
+                      <MenuItem value="Diario">Diario</MenuItem>
+                      <MenuItem value="Semanal">Semanal</MenuItem>
+                      <MenuItem value="Mensual">Mensual</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>

@@ -64,12 +64,13 @@ export const resultadosAPI = {
   /**
    * Valida los resultados de una orden
    */
-  validateResultados: async (ordenId: string, resultadosData: any, usuarioId: string) => {
-    // En un entorno real, esto sería una llamada a la API
-    const response = await api.put(`/ordenes/${ordenId}/resultados/validar/`, { resultados: resultadosData, id_usuario: usuarioId })
+  validateResultados: async (resultadoId: string, resultadosData: any, usuarioId: string) => {
+    // Aquí resultadoId es el ID del resultado principal para construir la ruta detail=True
+    console.log("Resultado ingresados %s, usuario %s",resultadoId,usuarioId," Datos"+JSON.stringify(resultadosData))
+    const response = await api.put(`/resultados/${resultadoId}/validar/`, {
+      resultados: resultadosData,
+      id_usuario: usuarioId,
+    })
     return response.data
-
-    // Simulación con datos de prueba
-    // return mockValidateResultados(ordenId, resultadosData, usuarioId) // Mock data removed
   },
 }
