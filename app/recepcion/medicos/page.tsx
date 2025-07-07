@@ -357,7 +357,7 @@ const paginatedMedico = medicos.map((m: any) => {
   }).filter((m: any) =>
           m.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
           m.correo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.edad.includes(searchTerm.toLowerCase()) ||
+          m.especialidades.toLowerCase().includes(searchTerm.toLowerCase()) ||          
           m.telefono.includes(searchTerm)
         )
 

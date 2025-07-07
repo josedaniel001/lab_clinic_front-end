@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import ValoresReferenciaInput,{ValorReferencia} from "@/components/laboratorio/ValoresReferenciaForExamen"
 import {
   Modal,
   ModalContent,
@@ -122,6 +123,7 @@ export default function ExamenesPage() {
   const [pagination, setPagination] = useState({ page: 1, next: null, previous: null, total: 0 })
   const [currentPage, setCurrentPage] = useState(1)
   const [limit, setLimit] = useState(5)
+  const [valoresReferencia, setValoresReferencia] = useState<ValorReferencia[]>([])
   const [formData, setFormData] = useState({
     id: "",
     codigo: "",
@@ -187,6 +189,14 @@ export default function ExamenesPage() {
 
   const handleOpenDialog = (examen: Examen | null = null) => {
     if (examen) {
+      if (examen.valores_referencia) {
+        try {
+          const parsed = JSON.parse(examen.valores_referencia)
+          setValoresReferencia(Array.isArray(parsed) ? parsed : [])
+        } catch {
+          setValoresReferencia([])
+        }
+      }
       setFormData({
         id: examen.id.toString(),
         codigo: examen.codigo,
@@ -214,6 +224,7 @@ export default function ExamenesPage() {
         estado: "Activo",
       })
       setIsEditing(false)
+      setValoresReferencia([])
     }
     setOpenDialog(true)
   }
@@ -279,9 +290,10 @@ export default function ExamenesPage() {
       const { id, ...restFormData } = formData
       const examenData: Examen = {
         ...restFormData,
+        valores_referencia: JSON.stringify(valoresReferencia),
         precio: Number(formData.precio) || 0,
       }
-
+      console.log("Data Examen: "+JSON.stringify(examenData))
       if (isEditing) {
         await examenesAPI.updateExamen(id, examenData);
         showNotification("Examen actualizado correctamente", "success")
@@ -494,15 +506,11 @@ export default function ExamenesPage() {
             />
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="valores_referencia">Valores de Referencia</Label>
-            <Textarea
-              id="valores_referencia"
-              value={formData.valores_referencia}
-              onChange={(e) => setFormData({ ...formData, valores_referencia: e.target.value })}
-              placeholder="Rangos normales"
-              rows={3}
-            />
+          <div className="space-y-2 md:col-span-2">                      
+              <ValoresReferenciaInput
+                valores={valoresReferencia}
+                onChange={setValoresReferencia}
+              />            
           </div>
         </div>
 

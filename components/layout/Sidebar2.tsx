@@ -87,19 +87,50 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
       permission: "ver_modulo_recepcion",
       children: [
         {
-          title: "Donantes",
-          path: "/recepcion/donantes",
+          title: "Pacientes",
+          path: "/recepcion/pacientes",
           icon: <Users size={18} />,
           permission: "ver_pacientes",
-        },  
+        },
         {
           title: "Médicos",
           path: "/recepcion/medicos",
           icon: <Stethoscope size={18} />,
           permission: "ver_medicos",
-        },        
+        },
+        {
+          title: "Órdenes",
+          path: "/recepcion/ordenes",
+          icon: <ClipboardList size={18} />,
+          permission: "ver_ordenes",
+        },
       ],
-    },   
+    },
+    {
+      title: "Laboratorio",
+      icon: <FlaskConical size={20} />,
+      permission: "ver_modulo_laboratorio",
+      children: [
+        {
+          title: "Resultados",
+          path: "/laboratorio/resultados",
+          icon: <TestTube size={18} />,
+          permission: "ver_resultados",
+        },
+        {
+          title: "Inventario",
+          path: "/laboratorio/inventario",
+          icon: <Package size={18} />,
+          permission: "ver_inventario",
+        },
+        {
+          title: "Exámenes",
+          path: "/laboratorio/examenes",
+          icon: <FlaskConical size={18} />,
+          permission: "ver_examenes",
+        },
+      ],
+    },
     {
       title: "Banco de Sangre",
       icon: <DropletIcon size={20} />,
@@ -110,7 +141,13 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
           path: "/banco_sangre/muestras",
           icon: <Syringe size={18} />,
           permission: "ver_muestras",
-        },              
+        },  
+         {
+          title: "Donantes",
+          path: "/recepcion/pacientes",
+          icon: <Users size={18} />,
+          permission: "ver_pacientes",
+        },      
          {
           title: "Órdenes para Examenes",
           path: "/recepcion/ordenes",
@@ -126,6 +163,25 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
       ],
     },
     {
+      title: "Facturación",
+      icon: <Receipt size={20} />,
+      permission: "ver_modulo_facturacion",
+      children: [
+        {
+          title: "Facturas",
+          path: "/facturacion/facturas",
+          icon: <Receipt size={18} />,
+          permission: "ver_facturas",
+        },
+        {
+          title: "Reportes",
+          path: "/facturacion/reportes",
+          icon: <TrendingUp size={18} />,
+          permission: "ver_reportes_facturacion",
+        },
+      ],
+    },
+    {
       title: "Reportes",
       icon: <BarChart3 size={20} />,
       permission: "ver_modulo_reportes",
@@ -137,7 +193,26 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
           permission: "ver_estadisticas",
         },
       ],
-    },    
+    },
+    {
+      title: "Administración",
+      icon: <Settings size={20} />,
+      permission: "ver_modulo_admin",
+      children: [
+        {
+          title: "Usuarios",
+          path: "/admin/usuarios",
+          icon: <Users size={18} />,
+          permission: "ver_usuarios",
+        },
+        {
+          title: "Roles",
+          path: "/admin/roles",
+          icon: <Shield size={18} />,
+          permission: "ver_roles",
+        },
+      ],
+    },
     {
       title: "Configuración",
       icon: <Engineering size={20} />,

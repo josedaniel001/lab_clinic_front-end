@@ -1,73 +1,87 @@
-import { useState } from "react"
+"use client"
+
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { Combobox } from "../ui/combobox"
 import { Textarea } from "@/components/ui/textarea"
+import { parse } from "path"
 
-const UNIDADES = [
-    "%", 
-  "Copias/mL",
-  "Positivo / Negativo",
-  "Presencia / Ausencia",
-  "Título (1:2, 1:4, etc.)",
-  "UI/L",
-  "U/µL",
-  "g/dL",
-  "mEq/L",
-  "mg/dL",
-  "mL/min",
-  "mmol/L",
-  "mUI/mL",
-  "ng/dL",
-  "ng/mL",
-  "pg/mL",
-  "ug/L",
-  "x10³/μL",
-  "x10⁶/μL",
-  "µIU/mL",
-  "μmol/L"
-]
+function parseRango(rango: string) {
+  if (!rango.includes("-")) return null
+  const [min, max] = rango.split("-").map((v) => parseFloat(v.trim()))
+  if (isNaN(min) || isNaN(max)) return null
+  return { min, max }
+}
 
-const ESTADOS = ["Normal", "Bajo", "Alto"]
+function getEstado(valor: number, rango: string) {
+  const parsed = parseRango(rango)
+  if (!parsed) return "Normal"
+  //if (valor ==parsed.min || valor==parsed.max) return "Limite Normal"
+  if (valor < parsed.min) return "Bajo"
+  if (valor > parsed.max) return "Alto"
+  return "Normal"
+}
 
 export function ResultadoFormExamen({ detalle, onSave }: any) {
   const examen = detalle.examen
 
   const [parametros, setParametros] = useState<any[]>([])
   const [observacionGeneral, setObservacionGeneral] = useState("")
-  const [nuevoParametro, setNuevoParametro] = useState<any>({
-    parametro: "",
-    valor: "",
-    unidad: "",
-    rango_normal: "",
-    estado: "Normal",
-    observacion: "",
-  })
 
-  const handleChange = (name: string, value: string) => {
-    setNuevoParametro((prev: any) => ({ ...prev, [name]: value }))
+  useEffect(() => {
+    if (examen.valores_referencia) {
+      try {
+        const valoresRef = JSON.parse(examen.valores_referencia)
+        if (Array.isArray(valoresRef)) {
+          const mapped = valoresRef.map((v: any) => ({
+            parametro: v.parametro,
+            valor: "",
+            unidad: v.unidad || "",
+            rango_normal: v.rango || "",
+            estado: "No Valor",
+            observacion: "",
+          }))
+          setParametros(mapped)
+        }
+      } catch (e) {
+        console.error("Valores de referencia mal formateados", e)
+        setParametros([])
+      }
+    }
+  }, [examen.valores_referencia])
+
+  useEffect(() => {
+    onSave(detalle.id, {
+      valores: parametros,
+      observaciones: observacionGeneral,
+    })
+  }, [parametros, observacionGeneral])
+
+  const handleValorChange = (index: number, valor: string) => {
+    const numValor = parseFloat(valor)
+    const estado = isNaN(numValor)
+      ? "No valor"
+      : getEstado(numValor, parametros[index].rango_normal)
+
+    const updated = [...parametros]
+    updated[index].valor = valor
+    updated[index].estado = estado
+    setParametros(updated)
   }
 
-  const agregarParametro = () => {
-    if (!nuevoParametro.parametro) return
-    const updatedParametros = [...parametros, nuevoParametro]
-    setParametros(updatedParametros)
-
-    // Guarda TODO junto: parámetros + observación
-    onSave(detalle.id, {
-      valores: updatedParametros,
-      observaciones: observacionGeneral
-    })
-
-    setNuevoParametro({
-      parametro: "",
-      valor: "",
-      unidad: "",
-      rango_normal: "",
-      estado: "Normal",
-      observacion: "",
-    })
+  const getEstadoColor = (estado: string) => {
+    switch (estado) {
+      case "Normal":
+        return "bg-green-100 text-green-700"
+      case "Limite Normal":
+        return "bg-yellow-200 text-yellow-700"
+      case "Bajo":
+        return "bg-red-100 text-yellow-700"
+      case "Alto":
+        return "bg-red-100 text-red-700"
+      default:
+        return "bg-gray-100 text-gray-700"
+    }
   }
 
   return (
@@ -76,79 +90,53 @@ export function ResultadoFormExamen({ detalle, onSave }: any) {
         {examen.codigo} - {examen.nombre}
       </h4>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        {/* ...campos del parámetro... */}
-        <div>
-          <Label>Parámetro</Label>
-          <Input
-            value={nuevoParametro.parametro}
-            onChange={(e) => handleChange("parametro", e.target.value)}
-          />
+      {parametros.length > 0 ? (
+        <div className="space-y-4">
+          {parametros.map((p, i) => (
+            <div key={i} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+              <div>
+                <Label>Parámetro</Label>
+                <Input value={p.parametro} readOnly />
+              </div>
+              <div>
+                <Label>Valor</Label>
+                <Input
+                  type="number"
+                  value={p.valor}
+                  onChange={(e) => handleValorChange(i, e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Unidad</Label>
+                <Input value={p.unidad} readOnly />
+              </div>
+              <div>
+                <Label>Rango Normal</Label>
+                <Input value={p.rango_normal} readOnly />
+              </div>
+              <div>
+                <Label>Estado</Label>
+                <span
+                  className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(
+                    p.estado
+                  )}`}
+                >
+                  {p.estado}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
-        <div>
-          <Label>Valor</Label>
-          <Input
-            type="number"
-            value={nuevoParametro.valor}
-            onChange={(e) => handleChange("valor", e.target.value)}
-          />
-        </div>
-        <div>
-          <Label>Unidad</Label>
-          <Combobox
-            items={UNIDADES.map((u) => ({ value: u, label: u }))}
-            value={nuevoParametro.unidad}
-            onChange={(e) => handleChange("unidad", e)}
-            placeholder="Unidad"
-          />
-        </div>
-        <div>
-          <Label>Rango Normal</Label>
-          <Input
-            value={nuevoParametro.rango_normal}
-            onChange={(e) => handleChange("rango_normal", e.target.value)}
-          />
-        </div>
-        <div>
-          <Label>Estado</Label>
-          <Combobox
-            value={nuevoParametro.estado}
-            onChange={(e) => handleChange("estado", e)}
-            items={ESTADOS.map((u) => ({ value: u, label: u }))}     
-            placeholder="ESTADO"           
-          />
-        </div>
-      </div>
+      ) : (
+        <p className="text-gray-500 italic">Sin valores de referencia configurados para este examen.</p>
+      )}
 
-      <Button variant="outline" onClick={agregarParametro} className="mb-4">
-        + Agregar Parámetro
-      </Button>
-
-      <div className="mb-4">
-        {parametros.length > 0 ? (
-          <ul className="text-sm list-disc pl-5">
-            {parametros.map((p, i) => (
-              <li key={i}>{p.parametro} - {p.valor} {p.unidad} ({p.estado})</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-500 text-sm">Sin parámetros aún.</p>
-        )}
-      </div>
-
-      <div className="space-y-3 md:col-span-3">
+      <div className="space-y-3 mt-4">
         <Label>Observación General</Label>
         <Textarea
           id="observacion"
           value={observacionGeneral}
-          onChange={(e) => {
-            setObservacionGeneral(e.target.value)
-            // Siempre actualiza la observación junto con los parámetros actuales
-            onSave(detalle.id, {
-              valores: parametros,
-              observaciones: e.target.value
-            })
-          }}
+          onChange={(e) => setObservacionGeneral(e.target.value)}
           placeholder="Observación para este resultado"
           rows={2}
         />
