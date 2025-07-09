@@ -6,7 +6,7 @@ const API_URLS = [process.env.NEXT_PUBLIC_API_URL, "http://localhost:8000/api", 
   Boolean,
 )
 
-const API_URL = API_URLS[0] || "http://localhost:8000/api"
+const API_URL = /*API_URLS[0] || */"http://192.168.1.4:8000/api"
 
 console.log("🔗 Configurando API con URL:", API_URL)
 
