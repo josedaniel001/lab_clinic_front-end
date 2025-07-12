@@ -113,7 +113,7 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
         },   
         {
           title: "Exámenes",
-          path: "/laboratorio/examenes",
+          path: "/banco_sangre/examenes",
           icon: <FlaskConical size={18} />,
           permission: "ver_examenes",
         },           
