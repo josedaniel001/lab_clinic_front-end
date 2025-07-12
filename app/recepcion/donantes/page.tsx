@@ -20,8 +20,9 @@ import {
 } from "@/components/ui/Modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Users, Plus, Edit, Trash2, UserPlus } from "lucide-react"
-import { pacientesAPI } from "@/api/pacientesAPI"
+import { donantesAPI } from "@/api/bancoSangreAPI"
 import { useCatalogosPorPais } from "@/hooks/useCatalogoPorPais"
+import { Combobox } from "@/components/ui/combobox"
 
 export default function PacientesPage() {
   const { showLoader, hideLoader } = useLoader()
@@ -43,28 +44,29 @@ export default function PacientesPage() {
  const [formData, setFormData] = useState({
     id_paciente:"",
     numero_documento: "",
-    nombre: "",
-    edad: "",
+    primer_nombre: "",
+    segundo_nombre: "",
     sexo: "",
+    direccion: "",
     celular: "",
-    correo: "",
-    procedencia: "",
-    municipio: "",
-    estado_civil: "",
+    segundo_apellido: "",
+    primer_apellido: "",
+    municipio:"",
+    fecha_nacimiento: "",
     ocupacion: "",
   })
-  const [errors, setErrors] = useState({
-    id_paciente:"",
+  const [errors, setErrors] = useState({    
     numero_documento: "",
-    nombre: "",
-    edad: "",
+    primer_nombre: "",
+    segundo_nombre: "",
     sexo: "",
+    direccion: "",
     celular: "",
-    correo: "",
-    procedencia: "",
-    municipio: "",
-    ocupacion:"",
-    estado_civil:"",
+    segundo_apellido: "",
+    primer_apellido: "",
+    municipio:"",
+    fecha_nacimiento: "",
+    ocupacion: "",  
   })
 
   useEffect(() => {
@@ -88,8 +90,8 @@ export default function PacientesPage() {
     }
 
     try {
-      const data = await pacientesAPI.getPacientes(currentPage,limit)
-      const lista = Array.isArray(data?.results) ? data.results : []
+      const data = await donantesAPI.geDonantes()
+      const lista = Array.isArray(data?.results) ? data.results : data
       setPacientes(lista)
       setPagination({
         page: currentPage,
@@ -118,21 +120,21 @@ export default function PacientesPage() {
 
  const handleOpenDialog = (paciente = null) => {
     if (paciente) {
-      console.log("Datos de paciente: "+JSON.stringify(paciente,null,2))
-      const nombreCompleto = `${paciente.nombres} ${paciente.apellidos}`.trim()
-      const nacimiento = new Date(paciente.fecha_nacimiento)
-      const hoy = new Date()
-      const edad = hoy.getFullYear() - (nacimiento.getFullYear())
+      console.log("Datos de paciente: "+JSON.stringify(paciente,null,2))                  
+      
 
        setFormData({   
       id_paciente:paciente.id ?? "",  
-      numero_documento: paciente.numero_documento ?? "",
-      nombre: nombreCompleto,
-      edad: isNaN(edad) ? "" : edad.toString(),
-      sexo: paciente.genero ?? "",
-      celular: paciente.telefono ?? "",
-      correo: paciente.email ?? "",
-      procedencia: paciente.direccion ?? "",
+      numero_documento: paciente.cui ?? "",
+      primer_nombre: paciente.primer_nombre,
+      segundo_nombre: paciente.segundo_nombre,
+      primer_apellido: paciente.primer_apellido,
+      segundo_apellido: paciente.segundo_apellido,
+      edad: isNaN(paciente.edad) ? 0 : paciente.edad,
+      fecha_nacimiento:paciente.fecha_nacimiento,
+      sexo: paciente.sexo ?? "",
+      celular: paciente.celular ?? "",      
+      direccion: paciente.direccion ?? "",
       municipio: paciente.municipio?.id?.toString() ?? "",
       ocupacion: paciente.ocupacion ?? "",
     })
@@ -183,23 +185,26 @@ export default function PacientesPage() {
     const newErrors = {      
       numero_documento: "",
       nombre: "",
-      edad: "",
+      fecha_nacimiento: "",
       sexo: "",
       celular: "",
       correo: "",
-      procedencia: "",
+      direccion: "",
       municipio:"",    
-      ocupacion:"",
-      estado_civil:"",        
+      ocupacion:"",              
     }
 
-    if (!formData.nombre.trim()) {
+    if (!formData.primer_nombre.trim()) {
       newErrors.nombre = "El nombre es requerido"
       isValid = false
     }
+    if (!formData.primer_apellido.trim()) {
+      newErrors.nombre = "El apellido es requerido"
+      isValid = false
+    }
 
-    if (!formData.edad || isNaN(Number(formData.edad)) || Number(formData.edad) <= 0) {
-      newErrors.edad = "Ingrese una edad válida"
+    if (!formData.fecha_nacimiento) {
+      newErrors.fecha_nacimiento = "Ingrese una fecha de nacimiento valida"
       isValid = false
     }
 
@@ -211,11 +216,7 @@ export default function PacientesPage() {
       newErrors.municipio = "Seleccione el municipio"
       isValid = false
     }
-
-    if (formData.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
-      newErrors.correo = "Ingrese un correo válido"
-      isValid = false
-    }
+    
 
     if (formData.celular && !/^\d{10}$/.test(formData.celular)) {
       newErrors.celular = "Ingrese un celular válido (10 dígitos)"
@@ -227,45 +228,48 @@ export default function PacientesPage() {
   }
 
  const handleSubmit = async () => {
-    if (!validateForm()) return
+  
+    if (!validateForm()) {    
+      return
+    }
     showLoader()
-    try {
-      const nombreSplit = formData.nombre.trim().split(" ")
-      const nombres = nombreSplit[0] || "Nombre"
-      const apellidos = nombreSplit.slice(1).join(" ") || "Apellido"
+    try {            
 
-      const edadNum = Number(formData.edad)
+      const edadNum = Number(formData.edad?formData.edad:0)
       const hoy = new Date()
       const anioNacimiento = hoy.getFullYear() - edadNum
       const fechaNacimiento = `${anioNacimiento}-01-01`
 
       const pacientePayload = {
-        numero_documento: formData.numero_documento || "00000000",
-        tipo_documento: "CC",
-        nombres,
-        apellidos,
+        cui: formData.numero_documento || "00000000",
+        //tipo_documento: "DPI",
+        primer_nombre:formData.primer_nombre.toUpperCase(),
+        segundo_nombre:formData.segundo_nombre ? formData.segundo_nombre.toUpperCase():"",
+        primer_apellido:formData.primer_apellido.toUpperCase(),
+        segundo_apellido:formData.segundo_apellido?formData.segundo_apellido.toUpperCase():"",
+        edad: formData.edad ? Number(formData.edad) : undefined,
         fecha_nacimiento: fechaNacimiento,
-        telefono: formData.celular,
-        email: formData.correo,
-        direccion: formData.procedencia || "Sin dirección",
-        genero: formData.sexo,
-        estado_civil: formData.estado_civil,
+        celular: formData.celular,        
+        direccion: formData.direccion || "Sin dirección",
+        sexo: formData.sexo,        
         ocupacion: formData.ocupacion,
         municipio: formData.municipio,
       }
-
+      console.log(pacientePayload)
       if (isEditing) {
-        await pacientesAPI.updatePaciente(formData.id_paciente, pacientePayload)
+        await donantesAPI.updateDonante(formData.id_paciente, pacientePayload)
         showNotification("Donante actualizado correctamente", "success")
       } else {
-        await pacientesAPI.createPaciente(pacientePayload)
+        console.log("entro aqui")
+        await donantesAPI.createDonante(pacientePayload)
         showNotification("Donante registrado correctamente", "success")
       }
 
       handleCloseDialog()
       fetchPacientes()
     } catch (error) {
-      showNotification("Error al guardar donante", "error")
+      console.log(error)
+      showNotification("Error al guardar donante: "+error, "error")
     } finally {
       hideLoader()
     }
@@ -275,7 +279,7 @@ export default function PacientesPage() {
     if (window.confirm("¿Está seguro de eliminar este donante?")) {
       showLoader()
       try {
-        await pacientesAPI.deletePaciente(id)
+        await donantesAPI.deleteDonante(id)
         showNotification("Donante eliminado correctamente", "success")
         fetchPacientes()
       } catch (error) {
@@ -292,18 +296,16 @@ const paginatedPacientes = pacientes.map((p: any) => {
     const edad = hoy.getFullYear() - nacimiento.getFullYear()
     return {
       id: p.id,
-      numero_documento: p.numero_documento,
-      nombre: `${p.nombres} ${p.apellidos}`,
+      numero_documento: p.cui,
+      nombre: `${p.primer_nombre} ${p.segundo_nombre} ${p.primer_apellido} ${p.segundo_apellido}`,
       edad: isNaN(edad) ? "-" : edad.toString(),
-      sexo: p.genero,
-      celular: p.telefono,
-      correo: p.email,
+      sexo: p.sexo,
+      celular: p.celular,      
       procedencia: p.direccion,
       original: p,
     }
   }).filter((p: any) =>
-          p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.correo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||          
           p.edad.includes(searchTerm.toLowerCase()) ||
           p.celular.includes(searchTerm)
         )
@@ -321,8 +323,7 @@ const paginatedPacientes = pacientes.map((p: any) => {
         return <StatusBadge status={labels[value as keyof typeof labels]} />
       },
     },
-    { key: "celular", label: "Celular" },
-    { key: "correo", label: "Correo", className: "text-blue-600" },
+    { key: "celular", label: "Celular" },    
     { key: "procedencia", label: "Procedencia" },
   ]
 
@@ -423,26 +424,87 @@ const promedioEdad = pacientes.length > 0
             {errors.numero_documento && <p className="text-sm text-red-500">{errors.numero_documento}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="nombre">Nombre completo *</Label>
+            <Label htmlFor="primer_nombre">Primer Nombre *</Label>
             <Input
-              id="nombre"
-              value={formData.nombre}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-              className={errors.nombre ? "border-red-500" : ""}
+              id="primer_nombre"
+              value={formData.primer_nombre}
+              onChange={(e) => setFormData({ ...formData, primer_nombre: e.target.value })}
+              className={errors.primer_nombre ? "border-red-500" : ""}
             />
-            {errors.nombre && <p className="text-sm text-red-500">{errors.nombre}</p>}
+            {errors.primer_nombre && <p className="text-sm text-red-500">{errors.primer_nombre}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="segundo_nombre">Segundo Nombre *</Label>
+            <Input
+              id="segundo_nombre"
+              value={formData.segundo_nombre}
+              onChange={(e) => setFormData({ ...formData, segundo_nombre: e.target.value })}
+              className={errors.segundo_nombre ? "border-red-500" : ""}
+            />
+            {errors.segundo_nombre && <p className="text-sm text-red-500">{errors.segundo_nombre}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="primer_apellido">Primer Apellido *</Label>
+            <Input
+              id="primer_apellido"
+              value={formData.primer_apellido}
+              onChange={(e) => setFormData({ ...formData, primer_apellido: e.target.value })}
+              className={errors.primer_apellido ? "border-red-500" : ""}
+            />
+            {errors.primer_apellido && <p className="text-sm text-red-500">{errors.primer_apellido}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="segundo_nombre">Segundo Apellido *</Label>
+            <Input
+              id="segundo_apellido"
+              value={formData.segundo_apellido}
+              onChange={(e) => setFormData({ ...formData, segundo_apellido: e.target.value })}
+              className={errors.segundo_apellido ? "border-red-500" : ""}
+            />
+            {errors.segundo_apellido && <p className="text-sm text-red-500">{errors.segundo_apellido}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edad">Edad *</Label>
+            <Label htmlFor="edad">Fecha Nacimiento *</Label>
+            <Input
+                id="edad"
+                type="date"
+                value={formData.fecha_nacimiento}
+                onChange={(e) => {
+                  const nuevaFecha = e.target.value
+
+                  // Calcula edad a partir de la fecha
+                  let edadCalculada = ""
+                  if (nuevaFecha) {
+                    const nacimiento = new Date(nuevaFecha)
+                    const hoy = new Date()
+                    let edad = hoy.getFullYear() - nacimiento.getFullYear()
+                    const m = hoy.getMonth() - nacimiento.getMonth()
+                    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
+                      edad--
+                    }
+                    edadCalculada = edad.toString()
+                  }
+
+                  setFormData({
+                    ...formData,
+                    fecha_nacimiento: nuevaFecha,
+                    edad: edadCalculada,
+                  })
+                }}
+                className={errors.fecha_nacimiento ? "border-red-500" : ""}
+              />
+            {errors.fecha_nacimiento && <p className="text-sm text-red-500">{errors.fecha_nacimiento}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edad">Edad </Label>
             <Input
               id="edad"
               type="number"
-              value={formData.edad}
-              onChange={(e) => setFormData({ ...formData, edad: e.target.value })}
-              className={errors.edad ? "border-red-500" : ""}
-            />
-            {errors.edad && <p className="text-sm text-red-500">{errors.edad}</p>}
+              readOnly
+              value={formData.edad}                            
+            />            
           </div>
 
           <div className="space-y-2">
@@ -461,37 +523,35 @@ const promedioEdad = pacientes.length > 0
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="ocupacion">Ocupacion *</Label>
-            <Select value={formData.ocupacion} onValueChange={(value) => setFormData({ ...formData, ocupacion: value })}>
-              <SelectTrigger className={errors.ocupacion ? "border-red-500" : ""}>
-                <SelectValue placeholder="Seleccionar ocupacion" />
-              </SelectTrigger>
-              <SelectContent>
-                {catalogoOcupaciones.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox 
+            items={catalogoOcupaciones.map(o => ({
+              value: String(o.value),
+              label: String(o.label),
+              }))}
+            key="ocupacion"
+            error={errors.ocupacion}
+            value={formData.ocupacion}
+            onChange={(val) =>{
+              console.log("Ocupacion seleccionado:", val) // ✅ Debe imprimirse
+              setFormData({ ...formData, ocupacion: val })}
+             }
+            placeholder="Seleccionar ocupacion"
+            />            
             {errors.ocupacion && <p className="text-sm text-red-500">{errors.ocupacion}</p>}
           </div>
-          <div className="space-y-2 ">
-            <Label htmlFor="estado_civil">Estado Civil *</Label>
-            <Select value={formData.estado_civil} onValueChange={(value) => setFormData({ ...formData, estado_civil: value })}>
-              <SelectTrigger className={errors.estado_civil ? "border-red-500" : ""}>
-                <SelectValue placeholder="Seleccionar estado civil" />
-              </SelectTrigger>
-              <SelectContent>
-                {catalogoEstadoCivil.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.estado_civil && <p className="text-sm text-red-500">{errors.estado_civil}</p>}
-          </div>
+        
 
+          <div className="space-y-2  md:col-span-2">
+            <Label htmlFor="direccion">Direccion</Label>
+            <Input
+              id="direccion"
+              value={formData.direccion}
+              onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+              className={errors.direccion ? "border-red-500" : ""}
+            />
+            {errors.direccion && <p className="text-sm text-red-500">{errors.direccion}</p>}
+          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="celular">Celular</Label>
             <Input
@@ -502,29 +562,7 @@ const promedioEdad = pacientes.length > 0
             />
             {errors.celular && <p className="text-sm text-red-500">{errors.celular}</p>}
           </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="correo">Correo electrónico</Label>
-            <Input
-              id="correo"
-              type="email"
-              value={formData.correo}
-              onChange={(e) => setFormData({ ...formData, correo: e.target.value })}
-              className={errors.correo ? "border-red-500" : ""}
-            />
-            {errors.correo && <p className="text-sm text-red-500">{errors.correo}</p>}
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="procedencia">Procedencia</Label>
-            <Input
-              id="procedencia"
-              value={formData.procedencia}
-              onChange={(e) => setFormData({ ...formData, procedencia: e.target.value })}
-              className={errors.procedencia ? "border-red-500" : ""}
-            />
-            {errors.procedencia && <p className="text-sm text-red-500">{errors.procedencia}</p>}
-          </div>
+          
           <div className="space-y-2 md:col-span-2">
              <Label htmlFor="departamento">Departamento *</Label>
                 <Select

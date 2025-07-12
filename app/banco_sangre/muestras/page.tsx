@@ -7,7 +7,8 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable } from "@/components/ui/DataTable"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Droplet, Plus, Eye, Edit, AlertTriangle } from "lucide-react"
+import { Droplet, Plus, Eye, Edit, AlertTriangle, Info } from "lucide-react"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { Combobox } from "@/components/ui/combobox"
 import { StatusBadge } from "@/components/ui/StatusBadge"
@@ -46,7 +47,7 @@ export default function BancoSangrePage() {
       localizacion: "",
       condiciones_almacenamiento: "",
       serologias: [],
-      observaciones: "",
+      observaciones: "",      
       donante_id: null,
       lote_id: null,
       estado: "DISPONIBLE",
@@ -144,28 +145,28 @@ export default function BancoSangrePage() {
    const stats = [
     {
       title: "Paquetes Globulares",
-      value: muestras.filter((m) => m.tipo_unidad === "Paquete Globular").length,
+      value: muestras.filter((m) => m.tipo_unidad === "PAQUETE_GLOBULAR").length,
       icon: <Droplet className="h-6 w-6" />,
       color: "info",
       trend: "Disponibles",
     },
     {
       title: "Plasma",
-      value: muestras.filter((m) => m.tipo_unidad === "Plasma").length,
+      value: muestras.filter((m) => m.tipo_unidad === "PLASMA").length,
       icon: <Droplet className="h-6 w-6" />,
       color: "success",
       trend: "En stock",
     },
     {
       title: "Plaquetas",
-      value: muestras.filter((m) => m.tipo_unidad === "Plaquetas").length,
+      value: muestras.filter((m) => m.tipo_unidad === "PLAQUETAS").length,
       icon: <Droplet className="h-6 w-6" />,
       color: "warning",
       trend: "Reservas",
     },
     {
       title: "Crio Precipitado",
-      value: muestras.filter((m) => m.tipo_unidad === "Crio Precipitado").length,
+      value: muestras.filter((m) => m.tipo_unidad === "CRIO_PRECIPITADO").length,
       icon: <Droplet className="h-6 w-6" />,
       color: "secondary",
       trend: "En stock",
@@ -210,6 +211,19 @@ export default function BancoSangrePage() {
       ),
 
      },
+     {
+      key: "observaciones",
+      label: "Obs.",
+      render: (_: any, row: any) =>
+        row.observaciones ? (
+          <Tooltip>
+            <TooltipTrigger>
+              <Info className="h-4 w-4 text-blue-600 cursor-pointer" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">{row.observaciones}</TooltipContent>
+          </Tooltip>
+        ) : null,
+    },
   ]
 
   const handleOpenDialog = (muestra = null) => {
@@ -224,10 +238,16 @@ export default function BancoSangrePage() {
         fecha_caducidad: muestra.fecha_caducidad,
         localizacion: muestra.localizacion,
         condiciones_almacenamiento: muestra.condiciones_almacenamiento,
-        serologias: [],
+        serologias: muestra.serologias
+        ? Object.entries(muestra.serologias).map(([key, value]) => ({
+            key,
+            value,
+          }))
+        : [],
+        dias_vigencia:muestra.dias_vigencia,
         observaciones: muestra.observaciones,
-        donante_id: muestra.donante_id,
-        lote_id: muestra.lote_id,
+        donante_id: muestra.donante?  muestra.donante.id:null ,
+        lote_id: muestra.lote ? muestra.lote.id:null,
         estado: muestra.estado,
       },
     ])
@@ -290,16 +310,37 @@ export default function BancoSangrePage() {
       if (u.lote_id) base.lote_id = u.lote_id
       return base
     })
-    await muestraAPI.createUnidades(payload.length === 1 ? payload[0] : payload)
-    fetchMuestras()
-    setOpenDialog(false)
+    try {
+      if (isEditing) {
+        // ✅ Si es edición: solo debe haber una unidad      
+        const unidadId = selectedMuestra?.id
+        if (!unidadId) {
+          showNotification("Error: No se encontró el ID de la unidad a actualizar.", "error")
+          return
+        }
+        await muestraAPI.updateUnidades(unidadId, payload[0]) // Solo uno
+        showNotification("Unidad actualizada correctamente", "success")
+      } else {
+        // ✅ Si es creación: puede ser uno o varios
+        await muestraAPI.createUnidades(payload.length === 1 ? payload[0] : payload)
+        showNotification("Unidades registradas correctamente", "success")
+      }  
+      setIsEditing(false)
+      handleRefresh()
+      setSelectedMuestra(null)
+      setOpenDialog(false)
+    }catch (error) {
+      console.error(error)
+      showNotification("Error al guardar la muestra", "error")
+    }
   }
    const handleView = (row: any) => {
     setSelectedMuestra(row)
     setOpenViewDialog(true)
   }
    const handleEdit = (row: any) => {
-    setIsEditing(true)
+    setIsEditing(true)    
+    setSelectedMuestra(row)
     handleOpenDialog(row)    
     setOpenDialog(true)    
   }
@@ -307,6 +348,8 @@ export default function BancoSangrePage() {
   const handleRefresh = () => {
     showNotification("Refrescando datos", "info")
     fetchMuestras(false)
+    fetchLotes()
+    fetchDonantes()
   }
    const handleCloseDialog = () => {
     setOpenDialog(false)
@@ -315,13 +358,14 @@ export default function BancoSangrePage() {
 
   return (
     <>
+    <TooltipProvider>
       <PageLayout
         title="Banco de Sangre"
         description="Administra las unidades de sangre y su disponibilidad"
         icon={<Droplet className="h-8 w-8 text-blue-600" />}
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
-        onRefresh={fetchMuestras}
+        onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
         stats={stats}
         actions={
@@ -508,6 +552,7 @@ export default function BancoSangrePage() {
                     <Label>Dias de Vigencia</Label>
                     <Input                      
                       value={unidad.dias_vigencia}
+                      readOnly
                       onChange={(e) =>
                         setFormData((prev) => {
                           const copy = [...prev]
@@ -573,11 +618,18 @@ export default function BancoSangrePage() {
               <Button variant="outline" onClick={() => setOpenDialog(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleSubmit}>Guardar</Button>
+              {!isEditing ? (
+              <Button onClick={() => handleSubmit()}>Guardar</Button>
+              ): 
+              (              
+              <Button onClick={() => handleSubmit()}>Actualizar</Button>               
+              )
+              }
             </ModalFooter>
           </ModalContent>
         </Modal>
       </PageLayout>
+      </TooltipProvider>
 
       <Modal open={openViewDialog} onOpenChange={setOpenViewDialog}>
         <ModalContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -590,14 +642,14 @@ export default function BancoSangrePage() {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Código</Label>
-                  <p className="mt-1 font-mono text-sm bg-gray-100 px-2 py-1 rounded inline-block">
+                  <Label className="text-md font-semibold text-green-800">Código</Label>
+                  <p className="mt-1 font-mono  text-sm bg-gray-100 px-2 py-1 rounded inline-block">
                     {selectedMuestra.correlativo}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">Estado</Label>
-                  <div className="mt-1">
+                  <Label className="text-md font-semibold text-green-800">Estado</Label>
+                  <div className="mt-1 px-2 py-1 rounded inline-block">
                     <StatusBadge
                       status={getStockStatus(selectedMuestra.estado)}
                       label={selectedMuestra.estado}
@@ -608,41 +660,63 @@ export default function BancoSangrePage() {
               </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-lg font-medium text-gray-500">Tipo de Unidad</Label>
-                <p className="mt-1 text-sm font-medium">{selectedMuestra.tipo_unidad}</p>
+                <Label className="text-md font-semibold text-green-800">Tipo de Unidad</Label>
+                <p className="mt-1 text-sm font-bold">{selectedMuestra.tipo_unidad}</p>
               </div>
               <div>
-                  <Label className="text-lg font-semibold text-green-800">Tipo de Sangre</Label>
-                  <p className="mt-1 text-md text-green-600 font-bold">{selectedMuestra.tipo_sangre}</p>
+                  <Label className="text-md font-semibold text-green-800">Tipo de Sangre</Label>
+                  <p className="mt-1 text-md font-bold">{selectedMuestra.tipo_sangre}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">                
                 <div>
-                  <Label className="text-lg font-medium text-blue-800">Volumen de Muestra</Label>
-                  <p className="mt-1 text-md font-semibold text-blue-400">{selectedMuestra.volumen_ml} ml</p>
+                  <Label className="text-md font-semibold text-green-800">Volumen de Muestra</Label>
+                  <p className="mt-1 text-md font-bold ">{selectedMuestra.volumen_ml} ml</p>
                 </div>
                 <div>
-                <Label className="text-lg font-medium text-gray-500">Fecha Caducidad</Label>
-                <p className="mt-1">{selectedMuestra.fecha_caducidad}</p>
+                <Label className="text-md font-semibold text-green-800">Fecha Caducidad</Label>
+                <p className="mt-1 font-bold">{selectedMuestra.fecha_caducidad}</p>
+              </div>  
+              <div>
+                <Label className="text-md font-semibold text-green-800">Lote</Label>
+                <p className="mt-1 font-bold">{selectedMuestra.lote ? selectedMuestra.lote.codigo : null}</p>
+              </div> 
+              <div>
+                <Label className="text-md font-semibold text-green-800">Donante</Label>
+                <p className="mt-1 font-bold">{selectedMuestra.donante ? `${selectedMuestra.donante.cui}-(${selectedMuestra.donante.primer_nombre} ${selectedMuestra.donante.primer_apellido})` : null}</p>
               </div>  
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4">
               <div>
-                <Label className="text-sm font-medium text-blue-600">Observaciones</Label>
-                <p className="mt-1 text-sm">{selectedMuestra.observaciones}</p>
+                <Label className="text-md font-semibold text-green-800">Observaciones</Label>
+                <p className="mt-1 text-md font-bold mb-4">{selectedMuestra.observaciones}</p>
+              </div>
               </div> 
+              <div className="grid grid-cols-2 gap-4 ">
               <div>
-                <Label className="text-sm font-medium text-blue-600">Localizacion de la Muestra</Label>
-                <p className="mt-1 text-sm">{selectedMuestra.localizacion}</p>
+                <Label className="text-md font-semibold text-green-800">Localizacion de la Muestra</Label>
+                <p className="mt-1 text-md font-bold">{selectedMuestra.localizacion}</p>
               </div>                                                
               <div>
-                <Label className="text-sm font-medium text-blue-600">Dias de Vigencia</Label>
-                <p className="mt-1 text-sm">{selectedMuestra.dias_vigencia}</p>
+                <Label className="text-md font-semibold text-green-800">Dias de Vigencia</Label>
+                <p className="mt-1 text-md font-bold">{selectedMuestra.dias_vigencia}</p>
               </div>                                                  
               </div>
             </div>
           )}
+          {selectedMuestra && selectedMuestra.serologias && Object.keys(selectedMuestra.serologias).length > 0 && Object.keys(selectedMuestra.serologias).length > 0 && (
+              <div className="grid grid-cols-1 gap-4">
+                <Label className="ml-3 text-md font-semibold text-green-800">Serologías</Label>
+                <div className="space-y-2">
+                  {Object.entries(selectedMuestra.serologias).map(([key, value]) => (
+                    <p key={key} className="text-md ml-3">
+                      <span className="font-semibold">{key}:</span> {value}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
 
           <ModalFooter>
             <Button variant="outline" onClick={() => setOpenViewDialog(false)}>

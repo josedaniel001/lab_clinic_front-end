@@ -110,10 +110,16 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
           path: "/banco_sangre/muestras",
           icon: <Syringe size={18} />,
           permission: "ver_muestras",
-        },              
+        },   
+        {
+          title: "Exámenes",
+          path: "/laboratorio/examenes",
+          icon: <FlaskConical size={18} />,
+          permission: "ver_examenes",
+        },           
          {
           title: "Órdenes para Examenes",
-          path: "/recepcion/ordenes",
+          path: "/banco_sangre/ordenes",
           icon: <ClipboardList size={18} />,
           permission: "ver_ordenes",
         },

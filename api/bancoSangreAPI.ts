@@ -9,7 +9,36 @@ export const donantesAPI = {
     const url = `/banco_sangre/donantes/`
     const response = await api.get(url)
     return response.data
-    }
+    },
+
+    createDonante: async (pacienteData: any) => {
+      // En un entorno real, esto sería una llamada a la API
+      const response = await api.post('/banco_sangre/donantes/', pacienteData) // Added / at the end of the URL
+      return response.data
+  
+      // Simulación con datos de prueba
+      // return mockCreatePaciente(pacienteData) // Mock data removed
+    },
+  
+    /**
+     * Actualiza un paciente existente
+     */
+    updateDonante: async (id: string, pacienteData: any) => {
+      // En un entorno real, esto sería una llamada a la API
+      const response = await api.put(`/banco_sangre/donantes/${id}/`, pacienteData) // Added / at the end of the URL
+      return response.data
+  
+      // Simulación con datos de prueba
+      // return mockUpdatePaciente(id, pacienteData) // Mock data removed
+    },
+    deleteDonante: async (id: string) => {
+      // En un entorno real, esto sería una llamada a la API
+      const response = await api.delete(`/banco_sangre/donantes/${id}/`) // Added / at the end of the URL
+      return response.data
+  
+      // Simulación con datos de prueba
+      // return mockDeletePaciente(id) // Mock data removed
+    },
 }
 
 export const muestraAPI = {
