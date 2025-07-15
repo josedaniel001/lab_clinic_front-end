@@ -43,10 +43,11 @@ export const donantesAPI = {
 
 export const muestraAPI = {
 
-    getMuestrasUnidades: async (page?: number, limite?: number) => {
+    getMuestrasUnidades: async (page?: number, limite?: number, excludeEstados?: string[]) => {
     const params = new URLSearchParams()
     if (page) params.append("page", page.toString())
     if (limite) params.append("limit", limite.toString())
+    if (excludeEstados && excludeEstados.length > 0) params.append("exclude_estado", excludeEstados.join(","))
 
     const url = `/banco_sangre/unidades/?${params.toString()}`
     const response = await api.get(url)
@@ -64,6 +65,10 @@ export const muestraAPI = {
     // Simulación con datos de prueba
     // return mockUpdateMedico(id, medicoData) // Mock data removed
   },
+    patchUnidad: async (id: string, data: any) => {
+    const response = await api.patch(`/banco_sangre/unidades/${id}/`, data)
+    return response.data
+  },
   deleteUnidades: async (id: string) => {
     // En un entorno real, esto sería una llamada a la API
     const response = await api.delete(`/banco_sangre/unidades/${id}/`) // Added trailing slash
@@ -71,6 +76,10 @@ export const muestraAPI = {
 
     // Simulación con datos de prueba
     // return mockDeleteMedico(id) // Mock data removed
+  },
+   generarEtiquetaUnidad: async (id: number) => {
+    const response = await api.get(`/banco_sangre/unidades/${id}/generar-etiqueta/`)
+    return response.data  // { file_url: ... }
   },
 }
 
@@ -83,6 +92,10 @@ export const loteAPI = {
     const url = `/banco_sangre/lotes/`
     const response = await api.get(url)
     return response.data
-    }
+    },
+     generarEtiquetasLote: async (id: number) => {
+    const response = await api.get(`/banco_sangre/lotes/${id}/generar-etiquetas/`)
+    return response.data  // { file_url: ... }
+  },
 }
 

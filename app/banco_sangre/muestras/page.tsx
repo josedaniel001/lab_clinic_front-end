@@ -7,7 +7,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable } from "@/components/ui/DataTable"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Droplet, Plus, Eye, Edit, AlertTriangle, Info } from "lucide-react"
+import { Droplet, Plus, Eye, Edit, AlertTriangle, Info, PencilIcon, Trash2Icon } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { Combobox } from "@/components/ui/combobox"
@@ -53,7 +53,32 @@ export default function BancoSangrePage() {
       estado: "DISPONIBLE",
     },
   ])
+  
+  const handleTransform = (unidadBase: any) => {
+  // Marca unidad seleccionada
+  setSelectedMuestra(unidadBase)
 
+    // Prepara formData con una copia para nuevas unidades
+    setFormData([
+      {
+        tipo_unidad: "",  // Se definirá nueva
+        tipo_sangre: unidadBase.tipo_sangre,
+        volumen_ml: 0,
+        fecha_extraccion: unidadBase.fecha_extraccion,
+        fecha_caducidad: unidadBase.fecha_caducidad,
+        localizacion: unidadBase.localizacion,
+        condiciones_almacenamiento: unidadBase.condiciones_almacenamiento,
+        serologias: [],
+        observaciones: `Derivada de ${unidadBase.correlativo}`,
+        donante_id: unidadBase.donante ? unidadBase.donante.id : null,
+        lote_id: unidadBase.lote ? unidadBase.lote.id : null,
+        estado: "DISPONIBLE",
+      },
+    ])
+
+    setIsEditing(false)
+    setOpenDialog(true)
+  }
   const TIPO_EXAMEN = [
      {value:"PAQUETE_GLOBULAR",label:"PAQUETES GLOBULARES"},
     {value:"PLASMA",label:"PLASMA"},
@@ -93,7 +118,7 @@ export default function BancoSangrePage() {
       setIsRefreshing(true)
     }
     try {
-    const data = await muestraAPI.getMuestrasUnidades(currentPage, limit)
+    const data = await muestraAPI.getMuestrasUnidades(currentPage, limit,["TRANSFORMADA", "VENCIDO","DESCARTADO"])
     const processed = Array.isArray(data?.results)
       ? data.results.map((m) => {
           const hoy = new Date()
@@ -174,6 +199,7 @@ export default function BancoSangrePage() {
   ]
   const getStockStatus = (estado: string) => {
     if (estado === "DISPONIBLE") return "success"
+    if (estado === "VENCIDO") return "error"
     if (estado === "RESERVADO") return "warning"
     return "secondary"
   }
@@ -186,6 +212,40 @@ export default function BancoSangrePage() {
       <Button variant="ghost" size="sm" onClick={() => handleEdit(row)}>
         <Edit className="h-4 w-4" />
       </Button>
+      {Number(row.dias_vigencia) >0 && (
+        <>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleGenerarEtiquetaUnidad(row.id)}
+          title="Generar Etiqueta PDF"
+        >
+        <Droplet className="h-4 w-4 text-blue-600" />
+                </Button>
+                <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleTransform(row)}
+          title="Transformar Unidad"
+        >
+          <PencilIcon className="h-4 w-4 text-purple-600" />
+        </Button>
+        </>
+        )
+      }
+      {Number(row.dias_vigencia) <=0 && row.estado =="DISPONIBLE" && (
+        <>        
+       <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleTransformVencido(row.id)}
+          title="Cambiar Unidad a Vencida"
+        >
+          <Trash2Icon className="h-4 w-4 text-orange-600" />
+        </Button>
+        </>
+        )
+      }
     </>
   )
 
@@ -206,8 +266,10 @@ export default function BancoSangrePage() {
       ),
     },
     { key: "estado", label: "Estado",
-      render: (value: string) => (
+      render: (value: string, row:any) => (        
+        (row.dias_vigencia && row.dias_vigencia>= 0) ?(
         <StatusBadge status={getStockStatus(value)} label={`${value}`} />
+        ):<StatusBadge status={getStockStatus("VENCIDO")} label={`VENCIDO`} />
       ),
 
      },
@@ -225,6 +287,41 @@ export default function BancoSangrePage() {
         ) : null,
     },
   ]
+
+  const getBaseUnidad = () => {
+  if (selectedMuestra && !isEditing) {
+    // Estás transformando
+    return {
+      tipo_unidad: "",
+      tipo_sangre: selectedMuestra.tipo_sangre,
+      volumen_ml: 0,
+      fecha_extraccion: selectedMuestra.fecha_extraccion,
+      fecha_caducidad: selectedMuestra.fecha_caducidad,
+      localizacion: selectedMuestra.localizacion,
+      condiciones_almacenamiento: selectedMuestra.condiciones_almacenamiento,
+      serologias: [],
+      observaciones: `Derivada de ${selectedMuestra.correlativo}`,
+      donante_id: selectedMuestra.donante ? selectedMuestra.donante.id : null,
+      lote_id: selectedMuestra.lote ? selectedMuestra.lote.id : null,
+      estado: "DISPONIBLE",
+    }
+  }
+  // Alta normal
+  return {
+    tipo_unidad: "",
+    tipo_sangre: "",
+    volumen_ml: 0,
+    fecha_extraccion: "",
+    fecha_caducidad: "",
+    localizacion: "",
+    condiciones_almacenamiento: "",
+    serologias: [],
+    observaciones: "",
+    donante_id: null,
+    lote_id: null,
+    estado: "DISPONIBLE",
+  }
+}
 
   const handleOpenDialog = (muestra = null) => {
     if(muestra){
@@ -277,6 +374,50 @@ export default function BancoSangrePage() {
     setOpenDialog(true)
   }
 
+      const handleGenerarEtiquetaUnidad = async (unidadId: number) => {
+      showLoader()
+      try {
+        const data = await muestraAPI.generarEtiquetaUnidad(unidadId)
+        if (data.file_url) {
+          window.open(data.file_url, "_blank")
+          showNotification("Etiqueta generada correctamente", "success")
+        } else {
+          showNotification("No se pudo generar la etiqueta", "error")
+        }
+      } catch (error) {
+        console.error(error)
+        showNotification("Error al generar etiqueta", "error")
+      } finally {
+        hideLoader()
+      }
+    }
+
+    const handleGenerarEtiquetasLote = async (loteId: number) => {
+      showLoader()
+      try {
+        const data = await loteAPI.generarEtiquetasLote(loteId)
+        if (data.file_url) {
+          window.open(data.file_url, "_blank")
+          showNotification("Etiquetas del lote generadas correctamente", "success")
+        } else {
+          showNotification("No se pudo generar el archivo", "error")
+        }
+      } catch (error) {
+        console.error(error)
+        showNotification("Error al generar etiquetas del lote", "error")
+      } finally {
+        hideLoader()
+      }
+    }
+
+    const handleTransformVencido = async (idUnidad: string) =>  {
+    try{
+     await muestraAPI.patchUnidad(idUnidad, { estado: "VENCIDO" })        
+     showNotification("Unidad transformada correctamente", "success")
+     }catch(error){
+      showNotification(error, "error")
+    }
+  }
   const handleSubmit = async () => {
 
      for (const unidad of formData) {
@@ -290,6 +431,18 @@ export default function BancoSangrePage() {
         }
       }
     }
+
+  const isTransformacion = selectedMuestra && !isEditing
+  if (isTransformacion) {
+    const totalDerivado = formData.reduce((sum, u) => sum + Number(u.volumen_ml), 0)
+    if (totalDerivado > Number(selectedMuestra.volumen_ml)) {
+      showNotification(
+        `Error: El volumen total de las unidades derivadas (${totalDerivado} ml) supera el volumen de la unidad madre (${selectedMuestra.volumen_ml} ml).`,
+        "error"
+      )
+      return
+    }
+  }
     const payload = formData.map((u) => {
       const base = {
         tipo_unidad: u.tipo_unidad,
@@ -310,6 +463,7 @@ export default function BancoSangrePage() {
       if (u.lote_id) base.lote_id = u.lote_id
       return base
     })
+
     try {
       if (isEditing) {
         // ✅ Si es edición: solo debe haber una unidad      
@@ -320,6 +474,11 @@ export default function BancoSangrePage() {
         }
         await muestraAPI.updateUnidades(unidadId, payload[0]) // Solo uno
         showNotification("Unidad actualizada correctamente", "success")
+          }else if (isTransformacion) {
+        // ✅ Caso transformación
+        await muestraAPI.patchUnidad(selectedMuestra.id, { estado: "TRANSFORMADA" })
+        await muestraAPI.createUnidades(payload)
+        showNotification("Unidad transformada correctamente", "success")
       } else {
         // ✅ Si es creación: puede ser uno o varios
         await muestraAPI.createUnidades(payload.length === 1 ? payload[0] : payload)
@@ -591,25 +750,7 @@ export default function BancoSangrePage() {
            {!isEditing && (
             <Button
               variant="outline"
-              onClick={() =>
-                setFormData([
-                  ...formData,
-                  {
-                    tipo_unidad: "",
-                    tipo_sangre: "",
-                    volumen_ml: 0,
-                    fecha_extraccion: "",
-                    fecha_caducidad: "",
-                    localizacion: "",
-                    condiciones_almacenamiento: "",
-                    serologias: [],
-                    observaciones: "",
-                    donante_id: null,
-                    lote_id: null,
-                    estado: "DISPONIBLE",
-                  },
-                ])
-              }
+              onClick={() => setFormData([...formData, getBaseUnidad()])}
             >
               + Agregar Otra Unidad
             </Button>

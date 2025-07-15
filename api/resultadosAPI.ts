@@ -13,13 +13,28 @@ export const resultadosAPI = {
   /**
    * Obtiene las órdenes con estado pendiente
    */
-  getOrdenesPendientes: async (page?: number,estado?:string) => {
+  getOrdenesPendientes: async (page?: number,estado?:string, filtro?: string) => {
     // En un entorno real, esto sería una llamada a la API
     const baseUrl = estado?`/ordenes/?estado=${estado}`:"/ordenes/?estado=PENDIENTE"
     const url = page ? `${baseUrl}&page=${page}` : baseUrl
     const response = await api.get(url)
-    return response.data
 
+   let ordenes = response.data?.results || response.data || []
+
+    if (!Array.isArray(ordenes)) {
+      console.error("Ordenes no es un array:", ordenes)
+      return []
+    }
+  // Filtro adicional en memoria
+    if (filtro === "donante") {
+    ordenes = ordenes.filter((orden: any) => !!orden.donante)
+  } else if (filtro === "paciente") {
+    ordenes = ordenes.filter((orden: any) => !!orden.paciente)
+  }
+
+  console.log("Ordenes filtradas:", ordenes)
+
+  return ordenes
     // Simulación con datos de prueba
     // return mockGetOrdenesPendientes() // Mock data removed
   },

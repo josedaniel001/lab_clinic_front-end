@@ -145,17 +145,25 @@ export default function ConfiguracionPage() {
     })
   }
 
-  const handleReportesChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
-    const { name, value } = e.target
-    const checked = (e.target as HTMLInputElement).checked
+const handleReportesChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+) => {
+  const { name, value } = e.target
+  setReportesConfig({
+    ...reportesConfig,
+    [name!]: value,
+  })
+}
 
-    if (name) {
-      setReportesConfig({
-        ...reportesConfig,
-        [name]: typeof checked !== "undefined" ? checked : value,
-      })
-    }
-  }
+const handleReportesSwitchChange = (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const { name, checked } = e.target
+  setReportesConfig({
+    ...reportesConfig,
+    [name!]: checked,
+  })
+}
 
   const handleBackupChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
     const { name, value } = e.target
@@ -579,7 +587,7 @@ export default function ConfiguracionPage() {
                 <Grid item xs={12} md={6}>
                   <FormControlLabel
                     control={
-                      <Switch checked={reportesConfig.mostrarLogo} onChange={handleReportesChange} name="mostrarLogo" />
+                      <Switch checked={reportesConfig.mostrarLogo} onChange={handleReportesSwitchChange} name="mostrarLogo" />
                     }
                     label="Mostrar Logo"
                   />
@@ -589,7 +597,7 @@ export default function ConfiguracionPage() {
                     control={
                       <Switch
                         checked={reportesConfig.mostrarFirma}
-                        onChange={handleReportesChange}
+                        onChange={handleReportesSwitchChange}
                         name="mostrarFirma"
                       />
                     }

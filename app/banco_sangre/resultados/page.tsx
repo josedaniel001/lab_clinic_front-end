@@ -77,13 +77,13 @@ export default function ResultadosPage() {
       let data
       let lista
       if (tabValue === "pendientes") {
-        data = await resultadosAPI.getOrdenesPendientes(currentPage,"PENDIENTE","paciente")
+        data = await resultadosAPI.getOrdenesPendientes(currentPage,"PENDIENTE","donante")        
         //lista = Array.isArray(data?.results) ? data.results : []
       } else if (tabValue === "proceso") {
-        data = await resultadosAPI.getOrdenesPendientes(currentPage,"EN PROCESO","paciente")
+        data = await resultadosAPI.getOrdenesPendientes(currentPage,"EN PROCESO","donante")
         //lista = Array.isArray(data?.results) ? data.results : []
       } else {
-        data = await resultadosAPI.getOrdenesPendientes(currentPage,"VALIDADO","paciente")
+        data = await resultadosAPI.getOrdenesPendientes(currentPage,"VALIDADO","donante")
         //lista = Array.isArray(data?.results) ? data.results : []
       }
       setOrdenes(data)
@@ -192,7 +192,7 @@ export default function ResultadosPage() {
 
   const filteredOrdenes = ordenes.filter(
     (orden: any) =>
-       (orden.paciente_nombre?.toLowerCase().includes(searchTerm.toLowerCase()))  
+      (orden.donante_nombre?.toLowerCase().includes(searchTerm.toLowerCase())) 
     || orden.codigo.includes(searchTerm),
   )
 
@@ -234,8 +234,8 @@ export default function ResultadosPage() {
       render: (value: string) => <span style={{ color: "#2563eb" }}>{value}</span>,
     },
     {
-      key: "paciente_nombre",
-      label: "Paciente",
+      key: "donante_nombre",
+      label: "Donante",
       render: (value: string, row: any) => (
         <div>
           <div style={{ color: "#1f2937", fontWeight: "500" }}>{value}</div>
@@ -503,8 +503,8 @@ export default function ResultadosPage() {
                 <p className="text-sm font-medium">{selectedOrden.codigo}</p>
               </div>
               <div>
-                <Label className="text-sm font-medium text-gray-600">Paciente</Label>
-                <p className="text-sm font-medium">{selectedOrden.paciente_nombre}</p>
+                <Label className="text-sm font-medium text-gray-600">Donante</Label>
+                <p className="text-sm font-medium">{selectedOrden.donante_nombre}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-600">Fecha</Label>

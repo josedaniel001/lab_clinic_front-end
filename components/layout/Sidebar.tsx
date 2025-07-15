@@ -125,7 +125,7 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
         },
         {
           title: "Resultados de Examenes Donantes",
-          path: "/laboratorio/resultados",
+          path: "/banco_sangre/resultados",
           icon: <TestTube size={18} />,
           permission: "ver_resultados",
         },
