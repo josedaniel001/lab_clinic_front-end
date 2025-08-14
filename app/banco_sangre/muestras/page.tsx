@@ -7,12 +7,13 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable } from "@/components/ui/DataTable"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Droplet, Plus, Eye, Edit, AlertTriangle, Info, PencilIcon, Trash2Icon } from "lucide-react"
+import { Droplet, Plus, Eye, Edit, AlertTriangle, Info, PencilIcon, Trash2Icon, Calculator } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { Combobox } from "@/components/ui/combobox"
 import { StatusBadge } from "@/components/ui/StatusBadge"
 import { SerologiasInput } from "@/components/banco_sangre/serologiasInput"
+import { parseErrorMessage } from "@/utils/errorHandler"
 import {
   Modal,
   ModalContent,
@@ -22,6 +23,8 @@ import {
   ModalTitle,
 } from "@/components/ui/Modal"
 import { muestraAPI, loteAPI, donantesAPI } from "@/api/bancoSangreAPI"
+import { calcularFechaCaducidad, obtenerTiposUnidadDisponibles, validarFechaCaducidad } from "@/utils/fechaCaducidad"
+import { CaducidadInfo } from "@/components/banco_sangre/CaducidadInfo"
 
 export default function BancoSangrePage() {
     const { showLoader, hideLoader } = useLoader()
@@ -79,12 +82,7 @@ export default function BancoSangrePage() {
     setIsEditing(false)
     setOpenDialog(true)
   }
-  const TIPO_EXAMEN = [
-     {value:"PAQUETE_GLOBULAR",label:"PAQUETES GLOBULARES"},
-    {value:"PLASMA",label:"PLASMA"},
-    {value:"PLAQUETAS",label:"PLAQUETAS"},
-    {value:"CRIO_PRECIPITADO",label:"CRIO PRECIPITADOS"},
-  ]
+  const TIPO_EXAMEN = obtenerTiposUnidadDisponibles()
   const TIPOS_SANGRE = [
     { value: "A+", label: "A+" },
     { value: "A-", label: "A-" },
@@ -144,7 +142,8 @@ export default function BancoSangrePage() {
 
   const fetchDonantes = async () => {
     const data = await donantesAPI.geDonantes()
-    setDonantes(data)
+    const lista = Array.isArray(data?.results) ? data.results : data
+    setDonantes(lista)
   }
 
   const fetchLotes = async () => {
@@ -426,8 +425,20 @@ export default function BancoSangrePage() {
         const fechaCaducidad = new Date(unidad.fecha_caducidad)
 
         if (fechaExtraccion > fechaCaducidad) {
-          showNotification(`Error: La fecha de extracción (${unidad.fecha_extraccion}) no puede ser mayor que la fecha de caducidad (${unidad.fecha_caducidad}).`, error)                      
+          showNotification(`Error: La fecha de extracción (${unidad.fecha_extraccion}) no puede ser mayor que la fecha de caducidad (${unidad.fecha_caducidad}).`, "error")                      
           return // Detiene el envío
+        }
+        
+        // Validar que la fecha de caducidad sea correcta según el tipo de unidad
+        if (unidad.tipo_unidad) {
+          const fechaCalculada = calcularFechaCaducidad(unidad.fecha_extraccion, unidad.tipo_unidad)
+          if (unidad.fecha_caducidad !== fechaCalculada) {
+            showNotification(
+              `Error: La fecha de caducidad (${unidad.fecha_caducidad}) no coincide con el tipo de unidad ${unidad.tipo_unidad}. La fecha correcta debería ser ${fechaCalculada}.`, 
+              "error"
+            )
+            return
+          }
         }
       }
     }
@@ -489,8 +500,8 @@ export default function BancoSangrePage() {
       setSelectedMuestra(null)
       setOpenDialog(false)
     }catch (error) {
-      console.error(error)
-      showNotification("Error al guardar la muestra", "error")
+       const mensaje = parseErrorMessage(error)
+      showNotification("Error al guardar la muestra: "+mensaje, "error")
     }
   }
    const handleView = (row: any) => {
@@ -592,10 +603,24 @@ export default function BancoSangrePage() {
                         setFormData((prev) => {
                           const copy = [...prev]
                           copy[index].tipo_unidad = val
+                          
+                          // Calcular automáticamente la fecha de caducidad si hay fecha de extracción
+                          if (val && copy[index].fecha_extraccion) {
+                            try {
+                              copy[index].fecha_caducidad = calcularFechaCaducidad(
+                                copy[index].fecha_extraccion, 
+                                val
+                              )
+                            } catch (error) {
+                              console.error("Error calculando fecha de caducidad:", error)
+                            }
+                          }
+                          
                           return copy
                         })
                       }
                     />
+                    <CaducidadInfo tipoUnidad={unidad.tipo_unidad} />
                   </div>
                   <div>
                     <Label>Tipo Sangre</Label>
@@ -634,6 +659,19 @@ export default function BancoSangrePage() {
                         setFormData((prev) => {
                           const copy = [...prev]
                           copy[index].fecha_extraccion = e.target.value
+                          
+                          // Calcular automáticamente la fecha de caducidad si hay tipo de unidad
+                          if (e.target.value && copy[index].tipo_unidad) {
+                            try {
+                              copy[index].fecha_caducidad = calcularFechaCaducidad(
+                                e.target.value, 
+                                copy[index].tipo_unidad
+                              )
+                            } catch (error) {
+                              console.error("Error calculando fecha de caducidad:", error)
+                            }
+                          }
+                          
                           return copy
                         })
                       }
@@ -641,17 +679,46 @@ export default function BancoSangrePage() {
                   </div>
                   <div>
                     <Label>Fecha Caducidad</Label>
-                    <Input
-                      type="date"
-                      value={unidad.fecha_caducidad}
-                      onChange={(e) =>
-                        setFormData((prev) => {
-                          const copy = [...prev]
-                          copy[index].fecha_caducidad = e.target.value
-                          return copy
-                        })
-                      }
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        readOnly
+                        value={unidad.fecha_caducidad}
+                        onChange={(e) =>
+                          setFormData((prev) => {
+                            const copy = [...prev]
+                            copy[index].fecha_caducidad = e.target.value
+                            return copy
+                          })
+                        }
+                      />
+                      {unidad.tipo_unidad && unidad.fecha_extraccion && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            try {
+                              const fechaCalculada = calcularFechaCaducidad(
+                                unidad.fecha_extraccion, 
+                                unidad.tipo_unidad
+                              )
+                              setFormData((prev) => {
+                                const copy = [...prev]
+                                copy[index].fecha_caducidad = fechaCalculada
+                                return copy
+                              })
+                              showNotification("Fecha de caducidad calculada automáticamente", "success")
+                            } catch (error) {
+                              showNotification("Error al calcular la fecha de caducidad", "error")
+                            }
+                          }}
+                          title="Calcular automáticamente"
+                        >
+                          <Calculator className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <Label>Localización</Label>

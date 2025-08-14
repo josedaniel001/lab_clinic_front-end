@@ -1,7 +1,19 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { connectionSimulator, SIMULATION_SCENARIOS, type SimulationScenario } from "@/utils/connectionSimulator"
+import { connectionSimulator, SIMULATION_SCENARIOS } from "@/utils/connectionSimulator"
+
+interface SimulationScenario {
+  id: string
+  name: string
+  description: string
+  networkOnline: boolean
+  apiAvailable: boolean
+  apiResponseTime: number
+  apiErrorType?: "timeout" | "server_error" | "network_error" | "rate_limit"
+  intermittent?: boolean
+  duration?: number
+}
 import { useConnectionStatus } from "@/hooks/useConnectionStatus"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -99,8 +111,8 @@ export function ConnectionSimulatorPanel() {
     return "default"
   }
 
-  // Solo mostrar en desarrollo
-  if (process.env.NODE_ENV === "production") {
+  // Solo mostrar si está habilitado
+  if (process.env.NEXT_PUBLIC_ENABLE_DEBUG_PANEL !== "true") {
     return null
   }
 

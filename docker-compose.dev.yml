@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  lab-clinic-frontend-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: lab-clinic-frontend-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      - NEXT_PUBLIC_ENABLE_MOCK_DATA=false
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    env_file:
+      - env.development
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    restart: unless-stopped
+    networks:
+      - lab-clinic-dev-network
+    command: npm run dev
+
+networks:
+  lab-clinic-dev-network:
+    driver: bridge 

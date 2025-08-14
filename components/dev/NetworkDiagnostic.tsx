@@ -23,7 +23,7 @@ export default function NetworkDiagnostic() {
 
     // Test 1: Verificar si Django está corriendo
     try {
-      const response = await fetch("http://localhost:8000", {
+      const response = await fetch("http://bioanalisisadmin.com", {
         method: "GET",
         mode: "no-cors", // Para evitar CORS en esta prueba
       })
@@ -43,7 +43,7 @@ export default function NetworkDiagnostic() {
 
     // Test 2: Verificar CORS
     try {
-      const response = await fetch("http://localhost:8000/api/", {
+      const response = await fetch("http://bioanalisisadmin.com/api/", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -84,7 +84,7 @@ export default function NetworkDiagnostic() {
 
     // Test 3: Verificar endpoint de token
     try {
-      const response = await fetch("http://localhost:8000/api/token/", {
+      const response = await fetch("http://bioanalisisadmin.com/api/token/", {
         method: "OPTIONS", // Preflight request
         headers: {
           "Content-Type": "application/json",

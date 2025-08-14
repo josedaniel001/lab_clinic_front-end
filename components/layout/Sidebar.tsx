@@ -30,8 +30,13 @@ import {
   User,
   Syringe,
   DropletIcon,
+  Droplets,
+  SidebarClose,
+  SidebarOpen,
+  LogOut,
 } from "lucide-react"
-import { Biotech, Engineering } from "@mui/icons-material"
+import { Biotech, DocumentScanner, Engineering } from "@mui/icons-material"
+import { useConfiguracion } from "@/hooks/useConfiguracion"
 
 interface SidebarProps {
   collapsed: boolean
@@ -49,9 +54,10 @@ interface MenuItem {
 }
 
 function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: SidebarProps) {
-  const { isDarkMode, toggleTheme } = useTheme()
+  const { theme, toggleTheme } = useTheme()
   const pathname = usePathname()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, logout } = useAuth()
+  
 
   const [openSubMenus, setOpenSubMenus] = useState<{ [key: string]: boolean }>({})
 
@@ -106,7 +112,7 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
       permission: "ver_modulo_banco_sangre",
       children: [
         {
-          title: "Muestras de Donantes",
+          title: "Ingreso de Muestras",
           path: "/banco_sangre/muestras",
           icon: <Syringe size={18} />,
           permission: "ver_muestras",
@@ -129,6 +135,18 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
           icon: <TestTube size={18} />,
           permission: "ver_resultados",
         },
+        {
+          title: "Salida de Muestras",
+          path: "/banco_sangre/salida_muestras",
+          icon: <Droplets size={18} />,
+          permission: "ver_resultados",
+        },
+          {
+          title: "Entrevistas",
+          path: "/banco_sangre/entrevistas",
+          icon: <DocumentScanner fontSize="small" />,
+          permission: "ver_resultados",
+        },
       ],
     },
     {
@@ -146,19 +164,19 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
     },    
     {
       title: "Configuración",
-      icon: <Engineering size={20} />,
+      icon: <Engineering fontSize="medium" />,
       permission: "ver_modulo_configuracion",
       children: [
         {
           title: "General",
           path: "/configuracion",
-          icon: <Biotech size={18} />,
+          icon: <Biotech fontSize="small" />,
           permission: "ver_usuarios",
         },
         {
           title: "Notificaciones",
           path: "/configuracion/notificaciones",
-          icon: <Engineering size={18} />,
+          icon: <Engineering fontSize="small" />,
           permission: "ver_roles",
         },
       ],
@@ -301,21 +319,14 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
       {/* Header */}
       <div
         className={`flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 ${collapsed ? "px-2" : ""}`}
-      >
-        {!collapsed && (
-          <Link href="/dashboard" className="flex items-center">
-            <div className="relative w-32 h-8">
-              <Image src="/logo-labofutura.png" alt="LaboFutura Logo" fill className="object-contain" />
-            </div>
-          </Link>
-        )}
+      >                
 
         <button
           onClick={toggleCollapsed}
           className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           title={collapsed ? "Expandir sidebar" : "Colapsar sidebar"}
         >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {collapsed ? <SidebarOpen size={16} /> : <SidebarClose size={16} />}
         </button>
       </div>
 
@@ -326,39 +337,55 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
       {isAuthenticated && user && (
         <div className={`p-4 border-t border-gray-200 dark:border-gray-800 ${collapsed ? "px-2" : ""}`}>
           {collapsed ? (
-           <Link
+            <div className="space-y-2">
+              <Link
                 href="/perfil"
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                > <div
-              className="flex items-center justify-center p-2 rounded-lg bg-gray-100 dark:bg-gray-800"
-              title={`${user.display_name || user.username} - ${user.role_display || user.role}`}
-            >
-              <User size={20} className="text-gray-600 dark:text-gray-400" />
-            </div></Link>
-          ) : ( 
-            <Link
-                href="/perfil"
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-            <div className="flex items-center space-x-3 p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {(user.first_name?.[0] || user.username?.[0] || "U").toUpperCase()}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                  {user.display_name || user.first_name || user.username}
-                </p>                
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {user.role_display || user.role || "Usuario"}
-                </p>              
-              </div>
+                className="flex items-center justify-center p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                title={`${user.display_name || user.username} - ${user.role_display || user.role}`}
+              >
+                <User size={20} className="text-gray-600 dark:text-gray-400" />
+              </Link>
+              <button
+                onClick={logout}
+                className="w-full flex items-center justify-center p-2 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 transition-colors"
+                title="Cerrar sesión"
+              >
+                <LogOut size={20} className="text-red-600 dark:text-red-400" />
+              </button>
             </div>
-            </Link>
+          ) : ( 
+            <div className="space-y-2">
+              <Link
+                href="/perfil"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center space-x-3 p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-sm font-medium">
+                        {(user.first_name?.[0] || user.username?.[0] || "U").toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {user.display_name || user.first_name || user.username}
+                    </p>                
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {user.role_display || user.role || "Usuario"}
+                    </p>              
+                  </div>
+                </div>
+              </Link>
+              <button
+                onClick={logout}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 transition-colors"
+              >
+                <LogOut size={16} />
+                <span>Cerrar sesión</span>
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -369,27 +396,27 @@ function Sidebar({ collapsed, toggleCollapsed, isMobileOpen, toggleMobile }: Sid
           <button
             onClick={toggleTheme}
             className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            title={`Cambiar a modo ${isDarkMode ? "claro" : "oscuro"}`}
+            title={`Cambiar a modo ${theme === 'dark' ? "claro" : "oscuro"}`}
           >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         ) : (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-              {isDarkMode ? <Moon size={16} /> : <Sun size={16} />}
-              <span>{isDarkMode ? "Modo Oscuro" : "Modo Claro"}</span>
+              {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+              <span>{theme === 'dark' ? "Modo Oscuro" : "Modo Claro"}</span>
             </div>
             <button
               onClick={toggleTheme}
               className={`
                 relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                ${isDarkMode ? "bg-blue-600" : "bg-gray-200"}
+                ${theme === 'dark' ? "bg-blue-600" : "bg-gray-200"}
               `}
             >
               <span
                 className={`
                   inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                  ${isDarkMode ? "translate-x-6" : "translate-x-1"}
+                  ${theme === 'dark' ? "translate-x-6" : "translate-x-1"}
                 `}
               />
             </button>

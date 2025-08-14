@@ -54,13 +54,13 @@ npm install
 pnpm install
 
 3. Crea un archivo .env.local
-NEXT_PUBLIC_API_URL=http://localhost:8000/api/
+NEXT_PUBLIC_API_URL=http://bioanalisisadmin.com/api/
 
 
 4. Corre el servidor de desarrollo
 npm run dev
 
-El proyecto estará disponible en http://localhost:3000
+El proyecto estará disponible en http://bioanalisis.com
 
 ✨ Recomendaciones de desarrollo
 

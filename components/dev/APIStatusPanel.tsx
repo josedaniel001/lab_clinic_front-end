@@ -90,7 +90,7 @@ export function APIStatusPanel({ className }: APIStatusPanelProps) {
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">URL:</span>
-            <span className="font-mono text-xs">http://localhost:8000/api</span>
+            <span className="font-mono text-xs">http://bioanalisisadmin.com/api</span>
           </div>
 
           {apiStatus.version && (

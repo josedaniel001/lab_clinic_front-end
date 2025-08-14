@@ -2,13 +2,11 @@ import axios from "axios"
 import { getToken, setToken, getRefreshToken, removeToken, removeRefreshToken } from "@/utils/token"
 
 // Intentar diferentes URLs para el backend
-const API_URLS = [process.env.NEXT_PUBLIC_API_URL, "http://localhost:8000/api", "http://127.0.0.1:8000/api"].filter(
+const API_URLS = [process.env.NEXT_PUBLIC_API_URL, "http://192.168.1.4:8000/api", "http://127.0.0.1:8000/api"].filter(
   Boolean,
 )
 
-const API_URL = /*API_URLS[0] || */"http://192.168.1.4:8000/api"
-
-console.log("🔗 Configurando API con URL:", API_URL)
+const API_URL = API_URLS[1]
 
 // Crear instancia de axios con configuración mejorada
 const api = axios.create({
@@ -18,7 +16,7 @@ const api = axios.create({
     Accept: "application/json",
   },
   timeout: 15000, // 15 segundos
-  withCredentials: false, // Cambiar a true si necesitas cookies
+  withCredentials: true, // Habilitar cookies para CORS
 })
 
 // Variable para evitar múltiples llamadas de refresh simultáneas
@@ -36,44 +34,38 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = []
 }
 
-// Interceptor para agregar el token a las peticiones
+// Interceptor de request para agregar token de autorización
 api.interceptors.request.use(
   (config) => {
-    console.log(`🚀 Request: ${config.method?.toUpperCase()} ${config.url}`)
-
     const token = getToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    
+    // Configuración adicional para CORS
+    config.headers['X-Requested-With'] = 'XMLHttpRequest'
+    
     return config
   },
   (error) => {
-    console.error("❌ Request Error:", error)
     return Promise.reject(error)
   },
 )
 
-// Interceptor para manejar respuestas y errores
+// Interceptor de respuesta para manejar errores de autenticación
 api.interceptors.response.use(
-  (response) => {
-    console.log(`✅ Response: ${response.status} ${response.config.url}`)
-    return response
-  },
+  (response) => response,
   async (error) => {
-    console.error("❌ Response Error:", error.message)
+    const originalRequest = error.config
 
-    // Manejar diferentes tipos de errores
+    // Manejar errores de red
     if (error.code === "ERR_NETWORK") {
-      console.error("🔌 Error de red - Django no está disponible")
-      throw new Error("No se puede conectar con el servidor. Verifica que Django esté corriendo en puerto 8000.")
+      throw new Error("No se puede conectar con el servidor. Verifica tu conexión a internet.")
     }
 
     if (error.code === "ECONNABORTED") {
-      console.error("⏱️ Timeout de conexión")
       throw new Error("Timeout de conexión. El servidor tardó demasiado en responder.")
     }
-
-    const originalRequest = error.config
 
     // Manejar errores 401 (token expirado)
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -97,7 +89,6 @@ api.interceptors.response.use(
 
       if (refreshToken) {
         try {
-          console.log("🔄 Renovando token...")
           const response = await axios.post(`${API_URL}/token/refresh/`, {
             refresh: refreshToken,
           })
@@ -108,15 +99,17 @@ api.interceptors.response.use(
           processQueue(null, access)
           originalRequest.headers.Authorization = `Bearer ${access}`
           return api(originalRequest)
-        } catch (refreshError) {
-          console.error("❌ Error renovando token:", refreshError)
+        } catch (refreshError: any) {
           processQueue(refreshError, null)
 
-          removeToken()
-          removeRefreshToken()
+          // Solo cerrar sesión si es un error definitivo, no temporal
+          if (refreshError.response?.status === 401 || refreshError.response?.status === 400) {
+            removeToken()
+            removeRefreshToken()
 
-          if (typeof window !== "undefined") {
-            window.location.href = "/login"
+            if (typeof window !== "undefined") {
+              window.location.href = "/login"
+            }
           }
 
           return Promise.reject(refreshError)
@@ -124,6 +117,7 @@ api.interceptors.response.use(
           isRefreshing = false
         }
       } else {
+        // Solo redirigir si no hay refresh token
         if (typeof window !== "undefined") {
           window.location.href = "/login"
         }

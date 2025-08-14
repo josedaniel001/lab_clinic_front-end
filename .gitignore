@@ -25,3 +25,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SSL Certificates
+nginx/ssl/
+*.pem
+*.key
+*.crt
+*.csr
+*.ext
+
+# Nginx logs
+nginx/logs/
+*.log
+
+# Docker
+.dockerignore

@@ -19,10 +19,35 @@ import {
   ModalTrigger,
 } from "@/components/ui/Modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Users, Plus, Edit, Trash2, UserPlus } from "lucide-react"
+import { Users, Plus, Edit, Trash2, UserPlus, Filter } from "lucide-react"
 import { donantesAPI } from "@/api/bancoSangreAPI"
 import { useCatalogosPorPais } from "@/hooks/useCatalogoPorPais"
 import { Combobox } from "@/components/ui/combobox"
+import { FilterDropdown, FilterOption } from "@/components/ui/FilterDropdown"
+
+// Interfaces para tipado
+interface Donante {
+  id: string
+  cui: string
+  primer_nombre: string
+  segundo_nombre: string
+  primer_apellido: string
+  segundo_apellido: string
+  edad: number
+  fecha_nacimiento: string
+  sexo: string
+  celular: string
+  direccion: string
+  ocupacion: string
+  municipio?: {
+    id: string
+    nombre: string
+    departamento: {
+      id: string
+      nombre: string
+    }
+  }
+}
 
 export default function PacientesPage() {
   const { showLoader, hideLoader } = useLoader()
@@ -35,11 +60,25 @@ export default function PacientesPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [pacientes, setPacientes] = useState([])
+  const [pacientes, setPacientes] = useState<Donante[]>([])
   const [pagination, setPagination] = useState({ page: 1, next: null, previous: null, total: 0 })
   const [currentPage, setCurrentPage] = useState(1)
   const [limit, setLimit] = useState(5)
 
+  // Estados para filtros
+  const [filters, setFilters] = useState({
+    sexo: "__ALL__",
+    edadMin: "",
+    edadMax: "",
+    ocupacion: "__ALL__",
+    departamento: "__ALL__",
+    municipio: "__ALL__",
+    estadoCivil: "__ALL__",
+    fechaDesde: "",
+    fechaHasta: "",
+  })
+
+  const [activeFilters, setActiveFilters] = useState(0)
 
  const [formData, setFormData] = useState({
     id_paciente:"",
@@ -54,8 +93,10 @@ export default function PacientesPage() {
     municipio:"",
     fecha_nacimiento: "",
     ocupacion: "",
+    edad: "",
   })
   const [errors, setErrors] = useState({    
+    id_paciente: "",
     numero_documento: "",
     primer_nombre: "",
     segundo_nombre: "",
@@ -66,7 +107,8 @@ export default function PacientesPage() {
     primer_apellido: "",
     municipio:"",
     fecha_nacimiento: "",
-    ocupacion: "",  
+    ocupacion: "",
+    edad: "",
   })
 
   useEffect(() => {
@@ -82,6 +124,12 @@ export default function PacientesPage() {
   }
 }, [departamentoId, municipios])
 
+  // Contar filtros activos
+  useEffect(() => {
+    const activeCount = Object.values(filters).filter(value => value !== "" && value !== "__ALL__").length
+    setActiveFilters(activeCount)
+  }, [filters])
+
   const fetchPacientes = async (showLoading = true) => {
     if (showLoading) {
       showLoader()
@@ -90,7 +138,7 @@ export default function PacientesPage() {
     }
 
     try {
-      const data = await donantesAPI.geDonantes()
+      const data = await donantesAPI.geDonantes(currentPage,limit)
       const lista = Array.isArray(data?.results) ? data.results : data
       setPacientes(lista)
       setPagination({
@@ -118,7 +166,29 @@ export default function PacientesPage() {
     fetchPacientes(false)
   }
 
- const handleOpenDialog = (paciente = null) => {
+  const handleFilterChange = (newFilters: any) => {
+    setFilters(newFilters)
+  }
+
+  const clearFilters = () => {
+    setFilters({
+      sexo: "__ALL__",
+      edadMin: "",
+      edadMax: "",
+      ocupacion: "__ALL__",
+      departamento: "__ALL__",
+      municipio: "__ALL__",
+      estadoCivil: "__ALL__",
+      fechaDesde: "",
+      fechaHasta: "",
+    })
+  }
+
+  const clearFilter = (key: string) => {
+    setFilters(prev => ({ ...prev, [key]: "" }))
+  }
+
+ const handleOpenDialog = (paciente: Donante | null = null) => {
     if (paciente) {
       console.log("Datos de paciente: "+JSON.stringify(paciente,null,2))                  
       
@@ -130,7 +200,7 @@ export default function PacientesPage() {
       segundo_nombre: paciente.segundo_nombre,
       primer_apellido: paciente.primer_apellido,
       segundo_apellido: paciente.segundo_apellido,
-      edad: isNaN(paciente.edad) ? 0 : paciente.edad,
+      edad: isNaN(paciente.edad) ? "0" : paciente.edad.toString(),
       fecha_nacimiento:paciente.fecha_nacimiento,
       sexo: paciente.sexo ?? "",
       celular: paciente.celular ?? "",      
@@ -146,13 +216,16 @@ export default function PacientesPage() {
     setFormData({    
       id_paciente:"",  
       numero_documento: "",
-      nombre: "",
+      primer_nombre: "",
+      segundo_nombre: "",
+      primer_apellido: "",
+      segundo_apellido: "",
       edad: "",
       sexo: "",
       celular: "",
-      correo: "",
-      procedencia: "",
+      direccion: "",
       municipio: "",
+      fecha_nacimiento: "",
       ocupacion: "",
     })
     setDepartamentoId("")
@@ -168,38 +241,44 @@ export default function PacientesPage() {
     setErrors({      
       id_paciente:"",
       numero_documento: "",
-      nombre: "",
-      edad: "",
+      primer_nombre: "",
+      segundo_nombre: "",
       sexo: "",
       celular: "",
-      correo: "",
-      procedencia: "",
+      direccion: "",
       municipio:"",      
       ocupacion:"",
-      estado_civil:"",
+      primer_apellido: "",
+      segundo_apellido: "",
+      fecha_nacimiento: "",
+      edad: "",
     })
   }
 
   const validateForm = () => {
     let isValid = true
     const newErrors = {      
+      id_paciente: "",
       numero_documento: "",
-      nombre: "",
+      primer_nombre: "",
+      segundo_nombre: "",
+      primer_apellido: "",
+      segundo_apellido: "",
       fecha_nacimiento: "",
       sexo: "",
       celular: "",
-      correo: "",
       direccion: "",
       municipio:"",    
-      ocupacion:"",              
+      ocupacion:"",
+      edad: "",
     }
 
     if (!formData.primer_nombre.trim()) {
-      newErrors.nombre = "El nombre es requerido"
+      newErrors.primer_nombre = "El nombre es requerido"
       isValid = false
     }
     if (!formData.primer_apellido.trim()) {
-      newErrors.nombre = "El apellido es requerido"
+      newErrors.primer_apellido = "El apellido es requerido"
       isValid = false
     }
 
@@ -290,7 +369,7 @@ export default function PacientesPage() {
     }
   }
 
-const paginatedPacientes = pacientes.map((p: any) => {
+const paginatedPacientes = pacientes.map((p: Donante) => {
     const nacimiento = new Date(p.fecha_nacimiento)
     const hoy = new Date()
     const edad = hoy.getFullYear() - nacimiento.getFullYear()
@@ -302,13 +381,37 @@ const paginatedPacientes = pacientes.map((p: any) => {
       sexo: p.sexo,
       celular: p.celular,      
       procedencia: p.direccion,
+      ocupacion: p.ocupacion,
+      municipio: p.municipio?.nombre || "",
+      departamento: p.municipio?.departamento?.nombre || "",
+      fecha_nacimiento: p.fecha_nacimiento,
       original: p,
     }
-  }).filter((p: any) =>
-          p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||          
-          p.edad.includes(searchTerm.toLowerCase()) ||
-          p.celular.includes(searchTerm)
-        )
+  }).filter((p: any) => {
+    // Filtro de búsqueda general
+    const searchMatch = 
+      p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||          
+      p.numero_documento.includes(searchTerm) ||
+      p.celular.includes(searchTerm)
+
+    if (!searchMatch) return false
+
+    // Filtros avanzados
+    if (filters.sexo && filters.sexo !== "__ALL__" && p.sexo !== filters.sexo) return false
+    if (filters.ocupacion && filters.ocupacion !== "__ALL__" && p.ocupacion !== filters.ocupacion) return false
+    if (filters.departamento && filters.departamento !== "__ALL__" && p.departamento !== filters.departamento) return false
+    if (filters.municipio && filters.municipio !== "__ALL__" && p.municipio !== filters.municipio) return false
+
+    // Filtro por edad
+    if (filters.edadMin && parseInt(p.edad) < parseInt(filters.edadMin)) return false
+    if (filters.edadMax && parseInt(p.edad) > parseInt(filters.edadMax)) return false
+
+    // Filtro por fecha
+    if (filters.fechaDesde && p.fecha_nacimiento < filters.fechaDesde) return false
+    if (filters.fechaHasta && p.fecha_nacimiento > filters.fechaHasta) return false
+
+    return true
+  })
 
   const columns = [
     { key: "id", label: "ID", className: "font-medium" },
@@ -355,7 +458,7 @@ const catalogoEstadoCivil = [
 
 const promedioEdad = pacientes.length > 0
   ? Math.round(
-      pacientes.reduce((acc: number, p: any) => {
+      pacientes.reduce((acc: number, p: Donante) => {
         const nacimiento = new Date(p.fecha_nacimiento)
         const hoy = new Date()
         const edad = hoy.getFullYear() - nacimiento.getFullYear()
@@ -364,34 +467,51 @@ const promedioEdad = pacientes.length > 0
     )
   : 0
 
-  const stats = [
+  // Configuración de filtros para el componente FilterDropdown
+  const filterOptions: FilterOption[] = [
     {
-      title: "Total Donantes",
-      value: pacientes.length.toLocaleString(),
-      icon: <Users className="h-6 w-6" />,
-      color: "primary",
-      trend: "+12% este mes",
+      key: "sexo",
+      label: "Sexo",
+      type: "select",
+      options: [
+        { value: "M", label: "Masculino" },
+        { value: "F", label: "Femenino" },
+        { value: "O", label: "Otro" },
+      ],
     },
     {
-      title: "Nuevos este mes",
-      value: "24",
-      icon: <UserPlus className="h-6 w-6" />,
-      color: "success",
-      trend: "+3 vs ayer",
+      key: "edadMin",
+      label: "Edad Mínima",
+      type: "number",
+      placeholder: "18",
     },
     {
-      title: "Activos",
-      value: paginatedPacientes.length.toString(),
-      icon: <Users className="h-6 w-6" />,
-      color: "secondary",
-      trend: "Filtrados",
+      key: "edadMax",
+      label: "Edad Máxima",
+      type: "number",
+      placeholder: "65",
     },
     {
-      title: "Promedio Edad",
-      value: promedioEdad.toString(),
-      icon: <Users className="h-6 w-6" />,
-      color: "warning",
-      trend: "años",
+      key: "ocupacion",
+      label: "Ocupación",
+      type: "combobox",
+      options: catalogoOcupaciones,
+    },
+    {
+      key: "departamento",
+      label: "Departamento",
+      type: "combobox",
+      options: departamentos.map(d => ({ value: d.nombre, label: d.nombre })),
+    },
+    {
+      key: "fechaDesde",
+      label: "Fecha Nacimiento Desde",
+      type: "date",
+    },
+    {
+      key: "fechaHasta",
+      label: "Fecha Nacimiento Hasta",
+      type: "date",
     },
   ]
 
@@ -644,6 +764,37 @@ const promedioEdad = pacientes.length > 0
     </>
   )
 
+  const stats = [
+    {
+      title: "Total Donantes",
+      value: pacientes.length.toLocaleString(),
+      icon: <Users className="h-6 w-6" />,
+      color: "primary",
+      trend: "+12% este mes",
+    },
+    {
+      title: "Nuevos este mes",
+      value: "24",
+      icon: <UserPlus className="h-6 w-6" />,
+      color: "success",
+      trend: "+3 vs ayer",
+    },
+    {
+      title: "Filtrados",
+      value: paginatedPacientes.length.toString(),
+      icon: <Filter className="h-6 w-6" />,
+      color: "secondary",
+      trend: `${activeFilters} filtros activos`,
+    },
+    {
+      title: "Promedio Edad",
+      value: promedioEdad.toString(),
+      icon: <Users className="h-6 w-6" />,
+      color: "warning",
+      trend: "años",
+    },
+  ]
+
  
 
   return (
@@ -655,7 +806,21 @@ const promedioEdad = pacientes.length > 0
       onSearchChange={setSearchTerm}
       onRefresh={handleRefresh}
       isRefreshing={isRefreshing}
-      actions={actions}
+      actions={
+        <div className="flex gap-2">
+          <FilterDropdown
+            filters={filterOptions}
+            values={filters}
+            onChange={handleFilterChange}
+            onClear={clearFilters}
+            onClearFilter={clearFilter}
+            activeFilters={activeFilters}
+            totalItems={pacientes.length}
+            filteredItems={paginatedPacientes.length}
+          />
+          {actions}
+        </div>
+      }
       stats={stats}
     >
       <DataTable

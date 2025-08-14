@@ -80,7 +80,7 @@ export default function PerfilPage() {
 
   useEffect(() => {
     if (user) {
-      console.log("datos del user:"+JSON.stringify(user, null, 2))      
+      alert("datos del user:"+JSON.stringify(user, null, 2))      
       setPerfilData({
         nombre: user.first_name || user.last_name || "",
         correo: user.email || "",

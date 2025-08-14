@@ -20,8 +20,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Modal,
+  ModalContent,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+} from "@/components/ui/Modal"
 import { Textarea } from "@/components/ui/textarea"
 import { ResultadoFormExamen } from "@/components/laboratorio/ResultadoForExamen"
+import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/DataTable"
 
 
 import {
@@ -40,6 +50,11 @@ import {
   ActivityIcon as Assignment,
   FileText,
   Activity,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  XCircle,
 } from "lucide-react"
 import { resultadosAPI } from "@/api/resultadosAPI"
 
@@ -53,9 +68,11 @@ export default function ResultadosPage() {
   const [ordenes, setOrdenes] = useState([])
   const [resultadosPorDetalle, setResultadosPorDetalle] = useState<any>({})
   const [openDialog, setOpenDialog] = useState(false)
+  const [openViewDialog, setOpenViewDialog] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedOrden, setSelectedOrden] = useState<any>(null)
+  const [selectedResultado, setSelectedResultado] = useState<any>(null)
   const [formData, setFormData] = useState<any>({})
   const [pagination, setPagination] = useState({ page: 1, next: null, previous: null, total: 0 })
   const [currentPage, setCurrentPage] = useState(1)
@@ -129,12 +146,32 @@ export default function ResultadosPage() {
     }
   }
 
+  const handleOpenViewDialog = async (orden: any) => {
+    showLoader()
+    try {
+      setSelectedResultado(orden)
+      const resultadosData = await resultadosAPI.getResultadosByOrden(orden.id)
+      setResultadosPorDetalle(resultadosData)
+      setOpenViewDialog(true)
+    } catch (error) {
+      showNotification("Error al cargar detalles del resultado", "error")
+    } finally {
+      hideLoader()
+    }
+  }
+
   const handleCloseDialog = () => {
     setOpenDialog(false)
     setSelectedOrden(null)
     setResultadosPorDetalle([])
     setFormData({})
     setErrors({})
+  }
+
+  const handleCloseViewDialog = () => {
+    setOpenViewDialog(false)
+    setSelectedResultado(null)
+    setResultadosPorDetalle([])
   }
 
   const handleSaveResults = async () => {
@@ -170,12 +207,13 @@ export default function ResultadosPage() {
         observaciones: resultado.observaciones,
         fecha_validacion: new Date().toISOString().slice(0,10), // YYYY-MM-DD
         valores: resultado.valores,  // Lista de valores corregidos
+        donante_apto: true, // Enviar true para indicar que el donante es apto
       }))
   
       await resultadosAPI.validateResultados(
         resultadosPorDetalle[0].id, // Usa el primer resultado como PK en la URL
         resultadosData,
-        user?.full_name,
+        user?.full_name || "",
       )
   
       showNotification("Resultados validados correctamente", "success")
@@ -183,6 +221,59 @@ export default function ResultadosPage() {
       fetchOrdenes()
     } catch (error) {
       showNotification("Error al validar resultados", "error")
+    } finally {
+      hideLoader()
+    }
+  }
+
+  const handleDenyResults = async () => {
+    showLoader()
+    try {
+      const resultadosData = resultadosPorDetalle.map((resultado: any) => ({
+        id: resultado.id,  // ID del resultado
+        observaciones: resultado.observaciones,
+        fecha_validacion: new Date().toISOString().slice(0,10), // YYYY-MM-DD
+        valores: resultado.valores,  // Lista de valores corregidos
+        donante_apto: false, // Enviar false para indicar que el donante no es apto
+      }))
+  
+      await resultadosAPI.validateResultados(
+        resultadosPorDetalle[0].id, // Usa el primer resultado como PK en la URL
+        resultadosData,
+        user?.full_name || "",
+      )
+  
+      showNotification("Donante denegado correctamente", "success")
+      handleCloseDialog()
+      fetchOrdenes()
+    } catch (error) {
+      showNotification("Error al denegar resultados", "error")
+    } finally {
+      hideLoader()
+    }
+  }
+
+  const handleDownloadPDF = async (orden: any) => {
+    showLoader()
+    try {
+      // Implementar descarga de PDF
+      showNotification("Descargando PDF...", "info")
+      // Aquí iría la lógica para generar y descargar el PDF
+    } catch (error) {
+      showNotification("Error al descargar PDF", "error")
+    } finally {
+      hideLoader()
+    }
+  }
+
+  const handleSendEmail = async (orden: any) => {
+    showLoader()
+    try {
+      // Implementar envío por email
+      showNotification("Enviando por email...", "info")
+      // Aquí iría la lógica para enviar por email
+    } catch (error) {
+      showNotification("Error al enviar email", "error")
     } finally {
       hideLoader()
     }
@@ -367,7 +458,7 @@ export default function ResultadosPage() {
     <Button
       variant="ghost"
       size="sm"
-      onClick={() => handleOpenView(row)}
+      onClick={() => handleOpenViewDialog(row)}
       className="h-8 w-8 p-0"
       style={{ color: "#2563eb" }}
       title="Ver resultado"
@@ -529,7 +620,7 @@ export default function ResultadosPage() {
             <ResultadoFormExamen
               key={detalle.id}
               detalle={detalle}
-              onSave={(resultado, parametros) => {
+              onSave={(resultado: string, parametros: any) => {
                 setResultadosPorDetalle((prev: any) => ({
                   ...prev,
                   [resultado]: parametros
@@ -542,7 +633,7 @@ export default function ResultadosPage() {
             <ResultadoValidarExamen
               key={resultado.id}
               resultado={resultado}
-              onValidate={(id, data) => {
+              onValidate={(id: string, data: any) => {
                 setResultadosPorDetalle((prev: any) =>
                   prev.map((r: any) =>
                     r.id === id ? { ...r, ...data } : r
@@ -572,10 +663,16 @@ export default function ResultadosPage() {
             {tabValue == "proceso" && (
               <>                
                 {hasPermission("validar_resultados") && (
-                  <Button onClick={handleValidateResults} className="gap-2">
-                    <CheckCircle className="h-4 w-4" />
-                    Validar
-                  </Button>
+                  <>
+                    <Button onClick={handleValidateResults} className="gap-2">
+                      <CheckCircle className="h-4 w-4" />
+                      Validar
+                    </Button>
+                    <Button onClick={handleDenyResults} variant="destructive" className="gap-2">
+                      <XCircle className="h-4 w-4" />
+                      Denegar
+                    </Button>
+                  </>
                 )}
               </>
             )}
@@ -590,6 +687,153 @@ export default function ResultadosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal View para ver detalles de resultados */}
+      <Modal open={openViewDialog} onOpenChange={setOpenViewDialog}>
+        <ModalContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <ModalHeader>
+            <ModalTitle className="flex items-center gap-2">
+              <TestTube className="h-5 w-5" />
+              Detalles del Resultado
+            </ModalTitle>
+            <ModalDescription>
+              {selectedResultado && `Orden: ${selectedResultado.codigo} - Donante: ${selectedResultado.donante_nombre}`}
+            </ModalDescription>
+          </ModalHeader>
+
+          {selectedResultado && (
+            <div className="space-y-6">
+              {/* Información de la Orden */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Información de la Orden</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Código de Orden</Label>
+                    <p className="text-sm font-medium text-blue-600">{selectedResultado.codigo}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Estado</Label>
+                    <div className="mt-1">
+                      <StatusBadge status={selectedResultado.estado} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Donante</Label>
+                    <p className="text-sm font-medium">{selectedResultado.donante_nombre}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Médico</Label>
+                    <p className="text-sm">{selectedResultado.medico_nombre}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Fecha</Label>
+                    <p className="text-sm">{selectedResultado.fecha}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Hora</Label>
+                    <p className="text-sm">{selectedResultado.hora}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Prioridad</Label>
+                    <div className="mt-1">
+                      <Badge variant="outline">{selectedResultado.prioridad}</Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Total Exámenes</Label>
+                    <p className="text-sm font-medium">{selectedResultado.total_examenes}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Exámenes y Resultados */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Exámenes y Resultados</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {selectedResultado.detalles && selectedResultado.detalles.length > 0 ? (
+                    <div className="space-y-4">
+                      {selectedResultado.detalles.map((detalle: any, index: number) => (
+                        <div key={detalle.id || index} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <h4 className="font-semibold text-lg">{detalle.examen?.nombre}</h4>
+                              <p className="text-sm text-gray-600">Código: {detalle.examen?.codigo}</p>
+                              <p className="text-sm text-gray-600">Categoría: {detalle.examen?.categoria}</p>
+                            </div>
+                            <div className="text-right">
+                              <StatusBadge status={detalle.estado} />
+                            </div>
+                          </div>
+                          
+                          {/* Resultados específicos si existen */}
+                          {resultadosPorDetalle && resultadosPorDetalle.length > 0 && (
+                            <div className="mt-3 pt-3 border-t">
+                              <h5 className="font-medium mb-2">Resultados:</h5>
+                              <div className="space-y-2">
+                                {resultadosPorDetalle
+                                  .filter((resultado: any) => resultado.detalle_orden_id === detalle.id)
+                                  .map((resultado: any, resIndex: number) => (
+                                    <div key={resIndex} className="bg-gray-50 p-3 rounded">
+                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                          <span className="font-medium">Valor:</span> {resultado.valor_numerico}
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Unidad:</span> {resultado.dimensional}
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Rango Normal:</span> {resultado.intervalo_referencia_min} - {resultado.intervalo_referencia_max}
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Estado:</span> 
+                                          <StatusBadge status={resultado.estado} />
+                                        </div>
+                                      </div>
+                                      {resultado.observacion_especifica && (
+                                        <div className="mt-2">
+                                          <span className="font-medium text-sm">Observaciones:</span>
+                                          <p className="text-sm text-gray-600 mt-1">{resultado.observacion_especifica}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">No hay exámenes registrados en esta orden.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          <ModalFooter>
+            <Button variant="outline" onClick={handleCloseViewDialog}>
+              Cerrar
+            </Button>
+            {selectedResultado && selectedResultado.estado === "VALIDADO" && (
+              <>
+                <Button variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Descargar PDF
+                </Button>
+                <Button className="gap-2">
+                  <Send className="h-4 w-4" />
+                  Enviar por Email
+                </Button>
+              </>
+            )}
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </>
   )
 }

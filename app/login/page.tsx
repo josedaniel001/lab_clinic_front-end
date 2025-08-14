@@ -7,6 +7,7 @@ import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
 import { useLoader } from "@/hooks/useLoader"
 import { useNotification } from "@/hooks/useNotification"
+//import { useConfiguracion } from "@/hooks/useConfiguracion"
 import {
   Box,
   Button,
@@ -28,6 +29,7 @@ export default function Login() {
   const { login } = useAuth()
   const { showLoader, hideLoader } = useLoader()
   const { showNotification } = useNotification()
+  //const { logoUrl } = useConfiguracion()
 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -116,7 +118,13 @@ export default function Login() {
             }}
           >
             <Box sx={{ mb: 3, width: "180px", height: "60px", position: "relative" }}>
-              <Image src="/logo-labofutura.png" alt="LaboFutura Logo" fill style={{ objectFit: "contain" }} />
+              <Image
+                src={ "/BIOANALISIS.png"}
+                alt="Logo"
+                fill
+                style={{ objectFit: "contain" }}
+                priority
+              />
             </Box>
 
             <Typography component="h1" variant="h5" color="primary" fontWeight="bold" gutterBottom>

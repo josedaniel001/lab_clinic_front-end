@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  lab-clinic-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lab-clinic-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    env_file:
+      - env.development
+    restart: unless-stopped
+    networks:
+      - lab-clinic-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://bioanalisisadmin.com/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Base de datos PostgreSQL (opcional - descomenta si necesitas una base de datos)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: lab-clinic-postgres
+  #   environment:
+  #     POSTGRES_DB: lab_clinic
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: password
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   restart: unless-stopped
+  #   networks:
+  #     - lab-clinic-network
+
+  # Redis para caché (opcional - descomenta si necesitas Redis)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: lab-clinic-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: unless-stopped
+  #   networks:
+  #     - lab-clinic-network
+
+networks:
+  lab-clinic-network:
+    driver: bridge
+
+# Volúmenes (descomenta si usas PostgreSQL o Redis)
+# volumes:
+#   postgres_data:
+#   redis_data: 

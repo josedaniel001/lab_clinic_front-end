@@ -22,7 +22,6 @@ export const authAPI = {
         requireTwoFactor: false,
       }
     } catch (error: any) {
-      console.error("Error en login:", error)
       throw new Error(error.response?.data?.detail || "Error de autenticación")
     }
   },
@@ -36,7 +35,6 @@ export const authAPI = {
       const response = await api.get("/auth/me/")
       return response.data
     } catch (error: any) {
-      console.error("Error al obtener usuario:", error)
       throw error
     }
   },
@@ -57,7 +55,6 @@ export const authAPI = {
         refreshToken: refreshToken, // El refresh token se mantiene igual
       }
     } catch (error: any) {
-      console.error("Error al refrescar token:", error)
       throw new Error("Token de refresco inválido")
     }
   },
@@ -70,7 +67,6 @@ export const authAPI = {
       const response = await api.post("/auth/register/", userData)
       return response.data
     } catch (error: any) {
-      console.error("Error en registro:", error)
       throw new Error(error.response?.data?.detail || "Error en el registro")
     }
   },

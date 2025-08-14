@@ -1,34 +1,34 @@
-// Duración del token en milisegundos (por ejemplo, 1 hora)
-const TOKEN_DURATION = 1 * 60 * 60 * 1000
+// Duración del token en milisegundos (24 horas)
+const TOKEN_DURATION = 24 * 60 * 60 * 1000
 
-// Claves para almacenar tokens en sessionStorage
+// Claves para almacenar tokens en localStorage
 const TOKEN_KEY = "labofutura_token"
 const TOKEN_EXPIRY_KEY = "labofutura_token_expiry"
 const REFRESH_TOKEN_KEY = "labofutura_refresh_token"
 
 /**
- * Guarda el token JWT en sessionStorage con tiempo de expiración
+ * Guarda el token JWT en localStorage con tiempo de expiración
  */
 export const setToken = (token: string) => {
   const expiryTime = new Date().getTime() + TOKEN_DURATION
-  sessionStorage.setItem(TOKEN_KEY, token)
-  sessionStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString())
+  localStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString())
 }
 
 /**
- * Guarda el refresh token en sessionStorage
+ * Guarda el refresh token en localStorage
  */
 export const setRefreshToken = (refreshToken: string) => {
-  sessionStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
 }
 
 /**
- * Obtiene el token JWT de sessionStorage si es válido
+ * Obtiene el token JWT de localStorage si es válido
  * Retorna null si no existe o ha expirado
  */
 export const getToken = (): string | null => {
-  const token = sessionStorage.getItem(TOKEN_KEY)
-  const expiryTime = sessionStorage.getItem(TOKEN_EXPIRY_KEY)
+  const token = localStorage.getItem(TOKEN_KEY)
+  const expiryTime = localStorage.getItem(TOKEN_EXPIRY_KEY)
 
   if (!token || !expiryTime) {
     return null
@@ -37,7 +37,6 @@ export const getToken = (): string | null => {
   const now = new Date().getTime()
 
   if (now > Number.parseInt(expiryTime)) {
-    // El token ha expirado, lo eliminamos
     removeToken()
     return null
   }
@@ -46,25 +45,25 @@ export const getToken = (): string | null => {
 }
 
 /**
- * Obtiene el refresh token de sessionStorage
+ * Obtiene el refresh token de localStorage
  */
 export const getRefreshToken = (): string | null => {
-  return sessionStorage.getItem(REFRESH_TOKEN_KEY)
+  return localStorage.getItem(REFRESH_TOKEN_KEY)
 }
 
 /**
- * Elimina el token JWT de sessionStorage
+ * Elimina el token JWT de localStorage
  */
 export const removeToken = () => {
-  sessionStorage.removeItem(TOKEN_KEY)
-  sessionStorage.removeItem(TOKEN_EXPIRY_KEY)
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(TOKEN_EXPIRY_KEY)
 }
 
 /**
- * Elimina el refresh token de sessionStorage
+ * Elimina el refresh token de localStorage
  */
 export const removeRefreshToken = () => {
-  sessionStorage.removeItem(REFRESH_TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
 }
 
 /**
@@ -78,7 +77,7 @@ export const isTokenValid = (): boolean => {
  * Obtiene el tiempo restante de validez del token en segundos
  */
 export const getTokenRemainingTime = (): number => {
-  const expiryTime = sessionStorage.getItem(TOKEN_EXPIRY_KEY)
+  const expiryTime = localStorage.getItem(TOKEN_EXPIRY_KEY)
   if (!expiryTime) return 0
 
   const now = new Date().getTime()

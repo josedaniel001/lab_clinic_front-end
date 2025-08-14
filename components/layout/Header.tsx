@@ -6,13 +6,16 @@ import { useConnectionStatus } from "@/hooks/useConnectionStatus"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Menu, Bell, Search, LogOut, ChevronLeft, ChevronRight, Wifi, WifiOff } from "lucide-react"
+import { Menu, Bell, Search, LogOut, ChevronLeft, ChevronRight, Wifi, WifiOff, SidebarOpen, SidebarClose, User } from "lucide-react"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
 import Sidebar from "@/components/layout/Sidebar"
+import { NetworkStatus } from "@/components/ui/NetworkStatus"
 
 export default function TopBar() {
   const { user, logout, isAuthenticated } = useAuth()
-  const { isOnline, connectionQuality } = useConnectionStatus()
+  const { isOnline } = useConnectionStatus()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -37,23 +40,6 @@ export default function TopBar() {
     return "Dashboard"
   }
 
-  const getConnectionStatus = () => {
-    if (!isOnline) return { text: "Offline", color: "bg-red-500", icon: <WifiOff className="h-3 w-3" /> }
-
-    switch (connectionQuality) {
-      case "excellent":
-        return { text: "Excelente", color: "bg-green-500", icon: <Wifi className="h-3 w-3" /> }
-      case "good":
-        return { text: "Buena", color: "bg-blue-500", icon: <Wifi className="h-3 w-3" /> }
-      case "poor":
-        return { text: "Lenta", color: "bg-yellow-500", icon: <Wifi className="h-3 w-3" /> }
-      default:
-        return { text: "Online", color: "bg-green-500", icon: <Wifi className="h-3 w-3" /> }
-    }
-  }
-
-  const connectionStatus = getConnectionStatus()
-
   return (
     <>
       <Sidebar
@@ -76,18 +62,32 @@ export default function TopBar() {
               <Menu className="h-6 w-6" />
             </Button>
 
-            {/* Botón collapse desktop */}
-            <Button
+            
+            {/* Logo */            
+            <Link href="/dashboard" className="flex items-left">
+            <div className="relative w-32 h-8">
+              <Image
+                src={"/BIOANALISIS.png"}
+                alt="Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white hidden sm:block">{getPageTitle()}</h1>
+          </Link>                    
+          }
+          {/* Botón collapse desktop */}
+          <Button
               variant="ghost"
               size="sm"
               onClick={toggleSidebarCollapsed}
               className="hidden lg:flex text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               title={sidebarCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
             >
-              {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+              {sidebarCollapsed ? <SidebarOpen className="h-5 w-5" /> : <SidebarClose className="h-5 w-5" />}
             </Button>
-
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white hidden sm:block">{getPageTitle()}</h1>
+            
 
             <div className="hidden md:flex items-center gap-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2 min-w-[300px]">
               <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
@@ -101,11 +101,7 @@ export default function TopBar() {
 
           <div className="flex items-center gap-4">
             {/* Status de conexión */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700">
-              <div className={`w-2 h-2 rounded-full ${connectionStatus.color}`} />
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{connectionStatus.text}</span>
-              {connectionStatus.icon}
-            </div>
+            <NetworkStatus />
 
             <Button
               variant="ghost"

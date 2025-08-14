@@ -60,6 +60,20 @@
   }
 }
 
+@keyframes slide-in {
+  from {
+    transform: translateX(150%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0%);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
 /* Corregir texto en inputs y buscadores */
 input,
 textarea,
@@ -423,4 +437,53 @@ select,
 
 .gradient-secondary {
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+}
+
+/* Estilos para el escáner QR */
+#qr-reader {
+  width: 100% !important;
+  min-height: 300px !important;
+}
+
+#qr-reader__scan_region {
+  background: transparent !important;
+}
+
+#qr-reader__scan_region > img {
+  display: none !important;
+}
+
+#qr-reader__camera_selection {
+  display: none !important;
+}
+
+#qr-reader__dashboard {
+  padding: 10px !important;
+}
+
+#qr-reader__dashboard_section {
+  margin-bottom: 10px !important;
+}
+
+#qr-reader__dashboard_section_csr {
+  display: none !important;
+}
+
+/* Estilos para el marco de escaneo */
+#qr-reader__scan_region > div {
+  border: 2px solid #3b82f6 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  #qr-reader {
+    min-height: 250px !important;
+  }
+  
+  #qr-reader__scan_region > div {
+    width: 200px !important;
+    height: 200px !important;
+  }
 }

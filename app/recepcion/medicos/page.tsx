@@ -20,10 +20,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Stethoscope, Plus, Edit, Trash2, UserCheck, Users, Award, Activity, Phone, Mail, MapPin } from "lucide-react"
+import { Stethoscope, Plus, Edit, Trash2, UserCheck, Users, Award, Activity, Phone, Mail, MapPin, Filter } from "lucide-react"
 import { useCatalogosPorPais } from "@/hooks/useCatalogoPorPais"
 import { medicosAPI } from "@/api/medicosAPI"
 import { Combobox } from "@/components/ui/combobox"
+import { FilterDropdown, FilterOption } from "@/components/ui/FilterDropdown"
+import { mapMedicoErrors } from "@/utils/errorMapper"
 
 export default function MedicosPage() {
   const { showLoader, hideLoader } = useLoader()
@@ -45,6 +47,18 @@ export default function MedicosPage() {
   const [pagination, setPagination] = useState({ page: 1, next: null, previous: null, total: 0 })
    const [limit, setLimit] = useState(5)
   const [currentPage, setCurrentPage] = useState(1)
+
+  // Estados para filtros
+  const [filters, setFilters] = useState({
+    especialidad: "__ALL__",
+    sexo: "__ALL__",
+    estado: "__ALL__",
+    departamento: "__ALL__",
+    municipio: "__ALL__",
+    codigoLaboratorio: "",
+  })
+
+  const [activeFilters, setActiveFilters] = useState(0)
 
   const [formData, setFormData] = useState({
     id_medico: "",
@@ -116,6 +130,11 @@ export default function MedicosPage() {
   }
 }, [departamentoId, municipios])
 
+  // Contar filtros activos
+  useEffect(() => {
+    const activeCount = Object.values(filters).filter(value => value !== "" && value !== "__ALL__").length
+    setActiveFilters(activeCount)
+  }, [filters])
 
   const fetchMedicos = async (showLoading = true) => {
     if (showLoading) {
@@ -150,6 +169,25 @@ export default function MedicosPage() {
 
   const handleRefresh = () => {
     fetchMedicos(false)
+  }
+
+  const handleFilterChange = (newFilters: any) => {
+    setFilters(newFilters)
+  }
+
+  const clearFilters = () => {
+    setFilters({
+      especialidad: "__ALL__",
+      sexo: "__ALL__",
+      estado: "__ALL__",
+      departamento: "__ALL__",
+      municipio: "__ALL__",
+      codigoLaboratorio: "",
+    })
+  }
+
+  const clearFilter = (key: string) => {
+    setFilters(prev => ({ ...prev, [key]: "" }))
   }
 
   const handleOpenDialog = (medico = null) => {
@@ -244,8 +282,16 @@ export default function MedicosPage() {
       newErrors.tipo_documento = "El tipo de documento es requerido"
       isValid = false
     }
-    if (formData.celular && !/^\d{10}$/.test(formData.celular)) {
-      newErrors.celular = "Ingrese un celular válido (10 dígitos)"
+    if (!formData.direccion_consultorio) {
+      newErrors.direccion_consultorio = "La direccion de consultorio es requerida"
+      isValid = false
+    }
+    if (formData.celular && !/^\d{8}$/.test(formData.celular)) {
+      newErrors.celular = "Ingrese un celular válido (8 dígitos)"
+      isValid = false
+    }
+    if (formData.telefono_consultorio && !/^\d{8}$/.test(formData.telefono_consultorio)) {
+      newErrors.telefono_consultorio = "Ingrese un telefono de consultorio válido (8 dígitos)"
       isValid = false
     }
 
@@ -264,6 +310,23 @@ export default function MedicosPage() {
     }
     console.log("Formulario válido, se continúa con la petición")
     showLoader()
+    
+    // Limpiar errores previos
+    setErrors({
+      id_medico: "",
+      nombre: "",
+      numero_documento: "",
+      tipo_documento:"",
+      especialidades: "",
+      codigo_laboratorio: "",
+      sexo: "",
+      celular: "",
+      correo: "",
+      telefono_consultorio: "",
+      direccion_consultorio: "",
+      municipios: "",
+    })
+    
     try {
       const nombreSplit = formData.nombre.trim().split(" ")
       const nombres = nombreSplit[0] || "Nombre"
@@ -272,6 +335,7 @@ export default function MedicosPage() {
       const pacientePayload = {
         numero_documento: formData.numero_documento ?? "000000000000",
         tipo_documento: formData.tipo_documento ?? "DPI",
+        codigo_laboratorio: formData.codigo_laboratorio ?? "000000000000",
         nombres,
         apellidos,
         celular: formData.celular,
@@ -293,8 +357,28 @@ export default function MedicosPage() {
       }
       setOpenDialog(false)
       fetchMedicos()
-    } catch (error) {
-      showNotification("Error al guardar médico", "error")
+    } catch (error: any) {
+      console.error("Error en handleSubmit:", error)
+      
+      // Manejar errores del backend
+      if (error.response?.data) {
+        const backendErrors = error.response.data
+        
+        // Usar la utilidad para mapear errores
+        const mappedErrors = mapMedicoErrors(backendErrors)
+        
+        // Actualizar errores en el estado
+        setErrors(mappedErrors)
+        
+        // Mostrar mensaje de error general si hay errores
+        const hasErrors = Object.values(mappedErrors).some(error => error !== "")
+        if (hasErrors) {
+          showNotification("Por favor corrige los errores en el formulario", "error")
+        }
+      } else {
+        // Error genérico si no hay respuesta del backend
+        showNotification(error.message || "Error al guardar médico", "error")
+      }
     } finally {
       hideLoader()
     }
@@ -352,14 +436,33 @@ const paginatedMedico = medicos.map((m: any) => {
       direccion: m.direccion_consultorio,
       activo: m.activo,
       ordenes_mes: 0,
+      departamento: m.municipio?.departamento?.nombre || "",
+      municipio: m.municipio?.nombre || "",
       original: m,
     }
-  }).filter((m: any) =>
-          m.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.correo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.especialidades.toLowerCase().includes(searchTerm.toLowerCase()) ||          
-          m.telefono.includes(searchTerm)
-        )
+  }).filter((m: any) => {
+    // Filtro de búsqueda general
+    const searchMatch = 
+      m.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.correo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.especialidades.toLowerCase().includes(searchTerm.toLowerCase()) ||          
+      m.telefono.includes(searchTerm)
+
+    if (!searchMatch) return false
+
+    // Filtros avanzados
+    if (filters.especialidad && filters.especialidad !== "__ALL__" && m.especialidades !== filters.especialidad) return false
+    if (filters.sexo && filters.sexo !== "__ALL__" && m.sexo !== filters.sexo) return false
+    if (filters.estado && filters.estado !== "__ALL__") {
+      const isActive = m.activo ? "Activo" : "Inactivo"
+      if (isActive !== filters.estado) return false
+    }
+    if (filters.departamento && filters.departamento !== "__ALL__" && m.departamento !== filters.departamento) return false
+    if (filters.municipio && filters.municipio !== "__ALL__" && m.municipio !== filters.municipio) return false
+    if (filters.codigoLaboratorio && !m.codigo_laboratorio.includes(filters.codigoLaboratorio)) return false
+
+    return true
+  })
 
   /*const filteredMedicos = medicos.filter(
     (medico: any) =>
@@ -378,6 +481,46 @@ const paginatedMedico = medicos.map((m: any) => {
   const promedioOrdenes = /*isNaN(Math.round(
     medicos.reduce((acc: number, m: any) => acc + (m.celular || 0), 0) / medicos.length+1,
   ))??*/Number(0)
+
+  // Configuración de filtros para el componente FilterDropdown
+  const filterOptions: FilterOption[] = [
+    {
+      key: "especialidad",
+      label: "Especialidad",
+      type: "combobox",
+      options: catalgoEspecialidad,
+    },
+    {
+      key: "sexo",
+      label: "Sexo",
+      type: "select",
+      options: [
+        { value: "M", label: "Masculino" },
+        { value: "F", label: "Femenino" },
+      ],
+    },
+    {
+      key: "estado",
+      label: "Estado",
+      type: "select",
+      options: [
+        { value: "Activo", label: "Activo" },
+        { value: "Inactivo", label: "Inactivo" },
+      ],
+    },
+    {
+      key: "departamento",
+      label: "Departamento",
+      type: "combobox",
+      options: departamentos.map(d => ({ value: d.nombre, label: d.nombre })),
+    },
+    {
+      key: "codigoLaboratorio",
+      label: "Código Laboratorio",
+      type: "input",
+      placeholder: "Buscar por código",
+    },
+  ]
 
   const columns = [
     {
@@ -468,11 +611,11 @@ const paginatedMedico = medicos.map((m: any) => {
       trend: `${Math.round((medicosActivos / medicos.length) * 100)}% del total`,
     },
     {
-      title: "Especialidades",
-      value: especialidades.toString(),
-      icon: <Award className="h-8 w-8" style={{ color: "white" }} />,
+      title: "Filtrados",
+      value: paginatedMedico.length.toString(),
+      icon: <Filter className="h-8 w-8" style={{ color: "white" }} />,
       color: "secondary",
-      trend: "Diversificadas",
+      trend: `${activeFilters} filtros activos`,
     },
     {
       title: "Promedio Órdenes",
@@ -569,7 +712,7 @@ const paginatedMedico = medicos.map((m: any) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="codigo_laboratorio" style={{ color: "#374151" }}>
+            <Label htmlFor="numero_documento" style={{ color: "#374151" }}>
               Numero de Documento 
             </Label>
             <Input
@@ -760,14 +903,28 @@ const paginatedMedico = medicos.map((m: any) => {
   return (
     <>
       <PageLayout
-        title="Directorio Médico"
-        description="Gestiona la información de los médicos del laboratorio"
+        title="Gestión de Médicos"
+        description="Administra la información de los médicos del laboratorio"
         icon={<Stethoscope className="h-8 w-8" style={{ color: "#2563eb" }} />}
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
-        actions={actions}
+        actions={
+          <div className="flex gap-2">
+            <FilterDropdown
+              filters={filterOptions}
+              values={filters}
+              onChange={handleFilterChange}
+              onClear={clearFilters}
+              onClearFilter={clearFilter}
+              activeFilters={activeFilters}
+              totalItems={medicos.length}
+              filteredItems={paginatedMedico.length}
+            />
+            {actions}
+          </div>
+        }
         stats={stats}
       >
         <DataTable
@@ -777,16 +934,16 @@ const paginatedMedico = medicos.map((m: any) => {
           emptyMessage="No se encontraron médicos que coincidan con tu búsqueda"
           emptyIcon={<Stethoscope className="h-12 w-12 text-gray-400" />}
         />
-      <div className="flex justify-between items-center mt-4">
-        <Button
-          variant="outline"
-          disabled={currentPage === 1 || !pagination.previous}
-          onClick={() => setCurrentPage((prev) => prev - 1)}
-        >
-          Anterior
-        </Button>
-        <span>Página {currentPage}</span>
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex justify-between items-center mt-4">
+          <Button
+            variant="outline"
+            disabled={currentPage === 1 || !pagination.previous}
+            onClick={() => setCurrentPage((prev) => prev - 1)}
+          >
+            Anterior
+          </Button>
+          <span>Página {currentPage}</span>
+          <div className="flex items-center gap-2 mb-4">
             <Label className="text-sm font-medium text-gray-700">Registros por página:</Label>
             <Select value={limit.toString()} onValueChange={(value) => {
               const newLimit = value === "all" ? 1000 : parseInt(value)
@@ -805,14 +962,14 @@ const paginatedMedico = medicos.map((m: any) => {
               </SelectContent>
             </Select>
           </div>
-        <Button
-          variant="outline"
-          disabled={!pagination.next}
-          onClick={() => setCurrentPage((prev) => prev + 1)}
-        >
-          Siguiente
-        </Button>
-      </div>
+          <Button
+            variant="outline"
+            disabled={!pagination.next}
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+          >
+            Siguiente
+          </Button>
+        </div>
       </PageLayout>
 
       {/* Details Dialog */}
@@ -914,7 +1071,6 @@ const paginatedMedico = medicos.map((m: any) => {
           </ModalFooter>
         </ModalContent>
       </Modal>
-      {/**/}
     </>
   )
 }

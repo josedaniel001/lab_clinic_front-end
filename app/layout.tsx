@@ -16,8 +16,8 @@ import { ConnectionSimulatorPanel } from "@/components/dev/ConnectionSimulatorPa
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "LaboFutura - Sistema de Laboratorio Clínico",
-  description: "Sistema integral para la gestión de laboratorios clínicos",
+  title: "BioAnalisis - Sistema de Banco de Sangre",
+  description: "Sistema integral para la gestión de banco de sangre",
 }
 
 export default function RootLayout({
@@ -42,7 +42,7 @@ export default function RootLayout({
                         {children}
                       </main>
                     </div>
-                    {process.env.NODE_ENV === "development" && <ConnectionSimulatorPanel />}
+                    {process.env.NEXT_PUBLIC_ENABLE_DEBUG_PANEL === "true" && <ConnectionSimulatorPanel />}
                   </RoleProvider>
                 </AuthProvider>
               </NotificationProvider>

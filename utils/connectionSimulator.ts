@@ -183,7 +183,7 @@ class ConnectionSimulator {
       const url = typeof input === "string" ? input : input.toString()
 
       // Solo interceptar llamadas a nuestra API
-      if (url.includes("/api/") || url.includes("localhost") || url.includes("labofutura")) {
+      if (url.includes("/api/") || url.includes("bioanalisisadmin.com") || url.includes("labofutura")) {
         return this.simulateAPIResponse(url, scenario)
       }
 

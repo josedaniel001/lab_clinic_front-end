@@ -1,12 +1,12 @@
 import api from "./api" // tu archivo base donde defines axios u otra config
 
 export const donantesAPI = {
-    geDonantes: async () => {
-    /*const params = new URLSearchParams()
+    geDonantes: async (page?: number, limit?: number) => {
+    const params = new URLSearchParams()
     if (page) params.append("page", page.toString())
-    if (limite) params.append("limit", limite.toString())*/
+    if (limit) params.append("limit", limit.toString())
 
-    const url = `/banco_sangre/donantes/`
+    const url = `/banco_sangre/donantes/?${params.toString()}`
     const response = await api.get(url)
     return response.data
     },
@@ -97,5 +97,32 @@ export const loteAPI = {
     const response = await api.get(`/banco_sangre/lotes/${id}/generar-etiquetas/`)
     return response.data  // { file_url: ... }
   },
+}
+
+export const salidaAPI = {
+  createSalida: async (salidaData: any) => {
+    const response = await api.post('/banco_sangre/salidas/', salidaData)
+    return response.data
+  },
+  
+  getSalidas: async (page?: number, limit?: number) => {
+    const params = new URLSearchParams()
+    if (page) params.append("page", page.toString())
+    if (limit) params.append("limit", limit.toString())
+
+    const url = `/banco_sangre/salidas/?${params.toString()}`
+    const response = await api.get(url)
+    return response.data
+  },
+  
+  updateSalida: async (id: string, salidaData: any) => {
+    const response = await api.put(`/banco_sangre/salidas/${id}/`, salidaData)
+    return response.data
+  },
+  
+  deleteSalida: async (id: string) => {
+    const response = await api.delete(`/banco_sangre/salidas/${id}/`)
+    return response.data
+  }
 }
 

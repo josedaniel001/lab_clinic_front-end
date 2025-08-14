@@ -3,11 +3,28 @@ import api from "./api" // API instance imported from ../api
 
 export const ordenesAPI = {
   /**
-   * Obtiene todas las órdenes
+   * Obtiene todas las órdenes con filtros opcionales
    */
-  getOrdenes: async (page?: number) => { // Added optional page parameter
-    // En un entorno real, esto sería una llamada a la API
-    const url = page ? `/ordenes/?page=${page}` : "/ordenes/" // Conditional URL with trailing slash
+  getOrdenes: async (page?: number, limit?: number, filters?: any) => {
+    // Construir la URL base
+    let url = '/ordenes/?'
+    
+    // Agregar parámetros de paginación
+    if (page) url += `page=${page}&`
+    if (limit) url += `limit=${limit}&`
+    
+    // Agregar filtros si se proporcionan
+    if (filters) {
+      Object.keys(filters).forEach(key => {
+        if (filters[key] && key !== 'page' && key !== 'limit') {
+          url += `${key}=${encodeURIComponent(filters[key])}&`
+        }
+      })
+    }
+    
+    // Remover el último '&' si existe
+    url = url.replace(/&$/, '')
+    
     const response = await api.get(url)
     return response.data
 
@@ -37,5 +54,13 @@ export const ordenesAPI = {
 
     // Simulación con datos de prueba
     // return mockDeleteOrden(id) // Mock data removed
+  },
+
+  /**
+   * Obtiene una orden por su ID
+   */
+  getOrdenById: async (id: string | number) => {
+    const response = await api.get(`/ordenes/${id}/`)
+    return response.data
   },
 }

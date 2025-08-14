@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { authAPI } from "@/api/authAPI"
 import { useLoader } from "@/hooks/useLoader"
-import { getToken, setToken, removeToken, setRefreshToken, getRefreshToken, removeRefreshToken } from "@/utils/token"
+import { getToken, setToken, removeToken, setRefreshToken, getRefreshToken, removeRefreshToken, getTokenRemainingTime } from "@/utils/token"
 
 interface User {
   id: number
@@ -64,8 +64,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Función para procesar datos del usuario de Django
   const processUserData = (userData: any): User => {
-    console.log("📋 Datos del usuario recibidos de Django:", userData)
-
     // Determinar el rol basado en los datos que devuelve tu /auth/me/
     let roleInfo = {
       role: "usuario",
@@ -124,7 +122,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       id_rol: roleInfo.id_rol,
     }
 
-    console.log("✅ Usuario procesado:", processedUser)
     return processedUser
   }
 
@@ -132,7 +129,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshUserSession = async () => {
     const refreshToken = getRefreshToken()
     if (!refreshToken) {
-      console.log("❌ No hay refresh token")
       removeToken()
       setIsAuthenticated(false)
       setUser(null)
@@ -140,7 +136,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     try {
-      console.log("🔄 Refrescando sesión...")
       const { token } = await authAPI.refreshToken(refreshToken)
       setToken(token)
 
@@ -149,9 +144,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const processedUser = processUserData(userData)
       setUser(processedUser)
       setIsAuthenticated(true)
-      console.log("✅ Sesión refrescada exitosamente")
     } catch (error) {
-      console.error("❌ Error al refrescar el token:", error)
       removeToken()
       removeRefreshToken()
       setIsAuthenticated(false)
@@ -161,33 +154,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     const initAuth = async () => {
-      console.log("🚀 Inicializando autenticación...")
       const token = getToken()
 
       if (token) {
         try {
-          console.log("🔑 Token encontrado, obteniendo usuario...")
           const userData = await authAPI.getCurrentUser()
           const processedUser = processUserData(userData)
           setUser(processedUser)
           setIsAuthenticated(true)
 
-          // Configurar un intervalo para refrescar el token cada 4 minutos
+          // Configurar un intervalo para refrescar el token cada 10 minutos
           const refreshInterval = setInterval(
-            () => {
-              console.log("⏰ Refrescando token automáticamente...")
-              refreshUserSession()
+            async () => {
+              try {
+                await refreshUserSession()
+              } catch (error) {
+                // No cerrar sesión inmediatamente, intentar en el próximo refresh
+              }
             },
-            4 * 60 * 1000,
+            10 * 60 * 1000, // 10 minutos
           )
 
-          return () => clearInterval(refreshInterval)
+          // También configurar un refresh cuando queden 5 minutos para que expire
+          const checkExpiryInterval = setInterval(() => {
+            const remainingTime = getTokenRemainingTime()
+            if (remainingTime < 5 * 60) { // Menos de 5 minutos
+              refreshUserSession()
+            }
+          }, 60 * 1000) // Verificar cada minuto
+
+          return () => {
+            clearInterval(refreshInterval)
+            clearInterval(checkExpiryInterval)
+          }
         } catch (error) {
-          console.error("❌ Error al verificar el token:", error)
           await refreshUserSession()
         }
-      } else {
-        console.log("❌ No hay token guardado")
       }
 
       setIsLoading(false)
@@ -197,26 +199,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [])
 
   const login = async (username: string, password: string) => {
-    console.log("🔐 Intentando login para:", username)
     showLoader()
     try {
       const { token } = await authAPI.login(username, password)
 
-      console.log("✅ Login exitoso, guardando tokens...")
       setToken(token.accessToken)
       setRefreshToken(token.refreshToken)
 
-      console.log("👤 Obteniendo información del usuario...")
       const userData = await authAPI.getCurrentUser()
       const processedUser = processUserData(userData)
       setUser(processedUser)
       setIsAuthenticated(true)
 
       hideLoader()
-      console.log("🎉 Login completado exitosamente")
       return { requireTwoFactor: false }
     } catch (error: any) {
-      console.error("❌ Error al iniciar sesión:", error)
       hideLoader()
       throw new Error(error.message || "Error de autenticación")
     }
@@ -227,7 +224,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       await authAPI.register(userData)
     } catch (error: any) {
-      console.error("❌ Error al registrar usuario:", error)
       throw new Error(error.message || "Error en el registro")
     } finally {
       hideLoader()
@@ -235,11 +231,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   const logout = () => {
-    console.log("👋 Cerrando sesión...")
     removeToken()
     removeRefreshToken()
     setUser(null)
     setIsAuthenticated(false)
+    
+    // Redirigir a la página de login
+    if (typeof window !== "undefined") {
+      window.location.href = "/login"
+    }
   }
 
   // Funciones de 2FA (implementar cuando esté listo en Django)
