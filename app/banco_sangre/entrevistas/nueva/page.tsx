@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Save, ArrowLeft, ArrowRight, User, Activity, FileText, Droplets } from "lucide-react"
 import { useNotification } from "@/hooks/useNotification"
 import { entrevistasAPI } from "@/api/entrevistasAPI"
-import { obtenerFechaGuatemalaISO } from "@/utils/fecha"
+import { obtenerFechaGuatemalaISO, formatearFechaParaAPI } from "@/utils/fecha"
 import {
   OCUPACIONES,
   ESTADOS_CIVILES,
@@ -468,7 +468,7 @@ export default function NuevaEntrevistaPage() {
       // Estructurar los datos para el envío
       const datosParaEnvio = {
         // Datos básicos
-        fecha: datosEntrevista.fecha,
+        fecha: formatearFechaParaAPI(datosEntrevista.fecha) || new Date().toISOString().split('T')[0],
         lugar_colecta: datosEntrevista.lugar_colecta,
         numero_correlativo: datosEntrevista.numero_correlativo,
         orden_id: idOrden, // ID de la orden asociada
@@ -483,7 +483,7 @@ export default function NuevaEntrevistaPage() {
         sexo: datosEntrevista.sexo,
         grupo_etnico: datosEntrevista.grupo_etnico,
         edad: datosEntrevista.edad,
-        fecha_nacimiento: datosEntrevista.fecha_nacimiento,
+        fecha_nacimiento: formatearFechaParaAPI(datosEntrevista.fecha_nacimiento),
         lugar_nacimiento: datosEntrevista.lugar_nacimiento,
         nacionalidad: datosEntrevista.nacionalidad,
         ocupacion: datosEntrevista.ocupacion,

@@ -419,19 +419,29 @@ class EntrevistasAPI {
     estado: "aceptado" | "rechazado" | "pendiente",
     observaciones?: string,
   ): Promise<EntrevistaDonante> {
-    await this.delay()
+    try {
+      const payload = {
+        estado,
+        ...(observaciones && { observaciones })
+      }
+      const response = await api.patch(`/banco_sangre/entrevistas/${id}/`, payload)
+      return response.data
+    } catch (error: any) {
+      // Si falla la llamada real, usar datos mock
+      console.warn("Error al actualizar estado en el servidor, usando datos mock:", error?.message)
+      
+      const index = mockEntrevistas.findIndex((e) => e.id === id)
+      if (index === -1) {
+        throw new Error("Entrevista no encontrada")
+      }
 
-    const index = mockEntrevistas.findIndex((e) => e.id === id)
-    if (index === -1) {
-      throw new Error("Entrevista no encontrada")
+      mockEntrevistas[index] = {
+        ...mockEntrevistas[index],
+        estado,
+        fecha_creacion: new Date().toISOString(),
+      }
+      return mockEntrevistas[index]
     }
-
-    mockEntrevistas[index] = {
-      ...mockEntrevistas[index],
-      estado,
-      fecha_creacion: new Date().toISOString(),
-    }
-    return mockEntrevistas[index]
   }
 
   // Nuevo: Actualizar el estado del donante (apto o no) y marcar la entrevista como aprobada
@@ -461,11 +471,24 @@ class EntrevistasAPI {
         throw new Error("Entrevista no encontrada")
       }
       const entrevista = mockEntrevistas[index]
-      const donante = {
-        ...(entrevista.donante ?? {}),
-        apto_donacion: apto,
-        tiene_entrevista_apro: tieneEntrevistaAprobada,
-      }
+             const donante = {
+         id: entrevista.donante?.id ?? 0,
+         cui: entrevista.donante?.cui ?? "",
+         primer_nombre: entrevista.donante?.primer_nombre ?? "",
+         segundo_nombre: entrevista.donante?.segundo_nombre,
+         primer_apellido: entrevista.donante?.primer_apellido ?? "",
+         segundo_apellido: entrevista.donante?.segundo_apellido,
+         direccion: entrevista.donante?.direccion ?? "",
+         celular: entrevista.donante?.celular ?? "",
+         sexo: entrevista.donante?.sexo ?? "",
+         fecha_nacimiento: entrevista.donante?.fecha_nacimiento ?? "",
+         edad: entrevista.donante?.edad ?? 0,
+         activo: entrevista.donante?.activo ?? true,
+         ocupacion: entrevista.donante?.ocupacion ?? "",
+         apto_donacion: apto,
+         tiene_entrevista_apro: tieneEntrevistaAprobada,
+         municipio: entrevista.donante?.municipio ?? 0,
+       }
       const nuevoEstado = apto ? "aceptado" : "rechazado"
       mockEntrevistas[index] = {
         ...entrevista,
@@ -535,13 +558,61 @@ class EntrevistasAPI {
     return new Blob(["PDF content"], { type: "application/pdf" })
   }
 
-  // Descargar PDF de entrevista
-  async descargarPDF(id: number): Promise<{ pdf_url: string; correlativo: string; donante: string }> {
+  // Generar PDF de entrevista (POST) - ACTUALIZADO
+  async generarPDF(id: number): Promise<{ file_url: string; mensaje: string; pdf_existe: boolean }> {
     try {
-      const response = await api.get(`/banco_sangre/entrevistas/${id}/descargar-pdf/`)
+      const response = await api.post(`/banco_sangre/entrevistas/${id}/generar-pdf/`)
       return response.data
     } catch (error: any) {
+      throw new Error(error.response?.data?.message || error.message || "Error al generar el PDF")
+    }
+  }
+
+  // Descargar PDF de entrevista (GET/POST) - ACTUALIZADO
+  async descargarPDF(id: number): Promise<{ file_url: string; mensaje: string; pdf_existe: boolean }> {
+    try {
+      // Intentar primero con GET
+      try {
+        const response = await api.get(`/banco_sangre/entrevistas/${id}/descargar-pdf/`)
+        return response.data
+      } catch (getError: any) {
+        // Si GET falla, intentar con POST
+        const response = await api.post(`/banco_sangre/entrevistas/${id}/descargar-pdf/`)
+        return response.data
+      }
+    } catch (error: any) {
       throw new Error(error.response?.data?.message || error.message || "Error al descargar el PDF")
+    }
+  }
+
+  // Obtener URL del PDF (GET) - ACTUALIZADO
+  async obtenerPDFURL(id: number): Promise<{ pdf_url: string; correlativo: string; donante: string }> {
+    try {
+      const response = await api.get(`/banco_sangre/entrevistas/${id}/pdf-url/`)
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || error.message || "Error al obtener la URL del PDF")
+    }
+  }
+
+  // Obtener todos los PDFs de un donante (GET) - NUEVO
+  async obtenerPDFsDonante(donanteId: number): Promise<{
+    donante_id: number
+    donante_nombre: string
+    total_pdfs: number
+    pdfs: Array<{
+      entrevista_id: number
+      correlativo: string
+      fecha_creacion: string
+      file_url: string
+      pdf_path: string
+    }>
+  }> {
+    try {
+      const response = await api.get(`/banco_sangre/entrevistas/donante/${donanteId}/pdfs/`)
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || error.message || "Error al obtener PDFs del donante")
     }
   }
 

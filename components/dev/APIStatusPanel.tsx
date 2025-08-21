@@ -1,161 +1,191 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { CheckCircle, XCircle, RefreshCw, Server, Wifi, WifiOff, Clock, Database } from "lucide-react"
-import { apiConnector } from "@/utils/apiConnector"
+import { TestTube, Send, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+import { salidaAPI } from "@/api/bancoSangreAPI"
 
-interface APIStatusPanelProps {
-  className?: string
-}
-
-export function APIStatusPanel({ className }: APIStatusPanelProps) {
-  const [apiStatus, setApiStatus] = useState({
-    isConnected: false,
-    message: "Verificando...",
-    version: undefined,
-    endpoints: [],
+export function APIStatusPanel() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [response, setResponse] = useState<any>(null)
+  const [error, setError] = useState<string>("")
+  const [testData, setTestData] = useState({
+    receptor: "Dr. Juan Pérez",
+    cedula_receptor: "12345678",
+    medico_solicitante: "Dr. María García",
+    observaciones: "Prueba de API - Urgente para cirugía",
+    unidades_ids: [1, 2, 3]
   })
-  const [endpointStatus, setEndpointStatus] = useState<Record<string, boolean>>({})
-  const [isChecking, setIsChecking] = useState(false)
-  const [lastCheck, setLastCheck] = useState<Date | null>(null)
 
-  const checkAPIStatus = async () => {
-    setIsChecking(true)
+  const testSalidaAPI = async () => {
+    setIsLoading(true)
+    setError("")
+    setResponse(null)
+
     try {
-      // Verificar estado general de la API
-      const status = await apiConnector.checkAPIHealth()
-      setApiStatus(status)
-
-      // Verificar endpoints específicos del laboratorio
-      const endpoints = await apiConnector.checkLabEndpoints()
-      setEndpointStatus(endpoints)
-
-      setLastCheck(new Date())
-    } catch (error) {
-      console.error("Error verificando API:", error)
+      console.log("Enviando datos de prueba:", testData)
+      const result = await salidaAPI.createSalida(testData)
+      console.log("Respuesta exitosa:", result)
+      setResponse(result)
+    } catch (err: any) {
+      console.error("Error en la prueba:", err)
+      setError(err.response?.data?.message || err.message || "Error desconocido")
     } finally {
-      setIsChecking(false)
+      setIsLoading(false)
     }
   }
 
-  useEffect(() => {
-    checkAPIStatus()
-  }, [])
+  const testGetSalidas = async () => {
+    setIsLoading(true)
+    setError("")
+    setResponse(null)
 
-  const getStatusColor = (isConnected: boolean) => {
-    return isConnected ? "text-green-600" : "text-red-600"
-  }
-
-  const getStatusIcon = (isConnected: boolean) => {
-    return isConnected ? (
-      <CheckCircle className="h-5 w-5 text-green-600" />
-    ) : (
-      <XCircle className="h-5 w-5 text-red-600" />
-    )
+    try {
+      const result = await salidaAPI.getSalidas(1, 10)
+      console.log("Salidas obtenidas:", result)
+      setResponse(result)
+    } catch (err: any) {
+      console.error("Error obteniendo salidas:", err)
+      setError(err.response?.data?.message || err.message || "Error desconocido")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <Card className={className}>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Server className="h-5 w-5" />
-          Estado de la API
-          {apiStatus.isConnected ? (
-            <Wifi className="h-4 w-4 text-green-600" />
-          ) : (
-            <WifiOff className="h-4 w-4 text-red-600" />
-          )}
+          <TestTube className="h-5 w-5" />
+          Prueba de API - Salidas de Banco de Sangre
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Estado General */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {getStatusIcon(apiStatus.isConnected)}
-            <span className={`font-medium ${getStatusColor(apiStatus.isConnected)}`}>
-              {apiStatus.isConnected ? "Conectado" : "Desconectado"}
-            </span>
+        {/* Datos de prueba */}
+        <div className="space-y-3">
+          <h4 className="font-medium">Datos de Prueba:</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium">Receptor:</label>
+              <Input
+                value={testData.receptor}
+                onChange={(e) => setTestData({...testData, receptor: e.target.value})}
+                placeholder="Nombre del receptor"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Cédula:</label>
+              <Input
+                value={testData.cedula_receptor}
+                onChange={(e) => setTestData({...testData, cedula_receptor: e.target.value})}
+                placeholder="Cédula del receptor"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Médico Solicitante:</label>
+              <Input
+                value={testData.medico_solicitante}
+                onChange={(e) => setTestData({...testData, medico_solicitante: e.target.value})}
+                placeholder="Médico solicitante"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">IDs de Unidades:</label>
+              <Input
+                value={testData.unidades_ids.join(", ")}
+                onChange={(e) => setTestData({
+                  ...testData, 
+                  unidades_ids: e.target.value.split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+                })}
+                placeholder="1, 2, 3"
+              />
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={checkAPIStatus} disabled={isChecking}>
-            {isChecking ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Verificar
+          <div>
+            <label className="text-sm font-medium">Observaciones:</label>
+            <Textarea
+              value={testData.observaciones}
+              onChange={(e) => setTestData({...testData, observaciones: e.target.value})}
+              placeholder="Observaciones de la salida"
+              rows={2}
+            />
+          </div>
+        </div>
+
+        {/* Botones de prueba */}
+        <div className="flex gap-2">
+          <Button 
+            onClick={testSalidaAPI} 
+            disabled={isLoading}
+            className="flex items-center gap-2"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            Probar Crear Salida
+          </Button>
+          <Button 
+            onClick={testGetSalidas} 
+            disabled={isLoading}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <TestTube className="h-4 w-4" />
+            )}
+            Obtener Salidas
           </Button>
         </div>
 
-        {/* Información de la API */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">URL:</span>
-            <span className="font-mono text-xs">http://bioanalisisadmin.com/api</span>
-          </div>
-
-          {apiStatus.version && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Versión:</span>
-              <Badge variant="outline">{apiStatus.version}</Badge>
+        {/* Resultado */}
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-2 text-red-700">
+              <AlertCircle className="h-4 w-4" />
+              <span className="font-medium">Error:</span>
             </div>
-          )}
-
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Estado:</span>
-            <span className={getStatusColor(apiStatus.isConnected)}>{apiStatus.message}</span>
-          </div>
-
-          {lastCheck && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Última verificación:</span>
-              <span className="flex items-center gap-1 text-xs text-gray-500">
-                <Clock className="h-3 w-3" />
-                {lastCheck.toLocaleTimeString()}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* Estado de Endpoints */}
-        <div>
-          <h4 className="font-medium mb-3 flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            Endpoints del Laboratorio
-          </h4>
-
-          <div className="space-y-2">
-            {Object.entries(endpointStatus).map(([endpoint, isAvailable]) => (
-              <div key={endpoint} className="flex items-center justify-between text-sm">
-                <span className="font-mono text-xs">{endpoint}</span>
-                <div className="flex items-center gap-1">
-                  {getStatusIcon(isAvailable)}
-                  <span className={getStatusColor(isAvailable)}>{isAvailable ? "OK" : "Error"}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Instrucciones */}
-        {!apiStatus.isConnected && (
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h5 className="font-medium text-yellow-800 mb-2">⚠️ API no disponible</h5>
-            <div className="text-sm text-yellow-700 space-y-1">
-              <p>• Verifica que tu backend esté corriendo en el puerto 8000</p>
-              <p>• Asegúrate de que CORS esté configurado correctamente</p>
-              <p>• Revisa que la URL de la API sea correcta</p>
-            </div>
+            <p className="text-sm text-red-600 mt-1">{error}</p>
           </div>
         )}
 
-        {apiStatus.isConnected && (
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <h5 className="font-medium text-green-800 mb-2">✅ API Conectada</h5>
-            <p className="text-sm text-green-700">El sistema está listo para usar datos reales del backend.</p>
+        {response && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2 text-green-700">
+              <CheckCircle className="h-4 w-4" />
+              <span className="font-medium">Respuesta Exitosa:</span>
+            </div>
+            <pre className="text-sm text-green-600 mt-2 overflow-auto max-h-40">
+              {JSON.stringify(response, null, 2)}
+            </pre>
           </div>
         )}
+
+        {/* Información del endpoint */}
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <h4 className="font-medium text-blue-800 mb-2">Endpoint de Prueba:</h4>
+          <div className="space-y-1 text-sm text-blue-700">
+            <p><strong>POST:</strong> /api/banco_sangre/salidas/</p>
+            <p><strong>GET:</strong> /api/banco_sangre/salidas/?page=1&limit=10</p>
+            <p><strong>Payload esperado:</strong></p>
+            <pre className="text-xs bg-blue-100 p-2 rounded mt-1 overflow-auto">
+{`{
+  "receptor": "Dr. Juan Pérez",
+  "cedula_receptor": "12345678", 
+  "medico_solicitante": "Dr. María García",
+  "observaciones": "Urgente para cirugía",
+  "unidades_ids": [1, 2, 3]
+}`}
+            </pre>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )

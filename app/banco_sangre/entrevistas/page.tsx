@@ -28,6 +28,7 @@ import {
   type EstadisticasEntrevistas,
 } from "@/api/entrevistasAPI"
 import { useNotification } from "@/hooks/useNotification"
+import { AutorizarEntrevistaDialog } from "@/components/banco_sangre/AutorizarEntrevistaDialog"
 
 // Página de gestión de entrevistas de donantes
 export default function EntrevistasPage() {
@@ -38,6 +39,8 @@ export default function EntrevistasPage() {
   const [mostrarDetalles, setMostrarDetalles] = useState(false)
   const [entrevistaSeleccionada, setEntrevistaSeleccionada] = useState<EntrevistaDonante | null>(null)
   const [loading, setLoading] = useState(true)
+  const [modalAutorizacion, setModalAutorizacion] = useState(false)
+  const [entrevistaParaAutorizar, setEntrevistaParaAutorizar] = useState<EntrevistaDonante | null>(null)
   const { showNotification } = useNotification()
 
   useEffect(() => {
@@ -63,20 +66,81 @@ export default function EntrevistasPage() {
     setFiltros({ ...filtros, busqueda })
   }
 
-  const handleDescargarPDF = async (id: number) => {
+  const handleGenerarPDF = async (id: number) => {
     try {
       showNotification("Generando PDF...", "info")
-      const pdfData = await entrevistasAPI.descargarPDF(id)
-      const link = document.createElement("a")
-      link.href = pdfData.pdf_url
-      link.download = `entrevista_${pdfData.correlativo}.pdf`
-      link.target = "_blank"
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      showNotification("PDF descargado exitosamente", "success")
+      const pdfData = await entrevistasAPI.generarPDF(id)
+      
+      console.log("PDF Data recibida:", pdfData)
+      
+      // Si el PDF se generó correctamente, mostrar mensaje de éxito
+      if (pdfData.file_url) {
+        // La URL ya viene completa desde el backend
+        const fullUrl = pdfData.file_url
+        console.log("Abriendo URL del PDF:", fullUrl)
+        
+        // Abrir PDF en nueva pestaña
+        window.open(fullUrl, '_blank')
+        
+        showNotification(pdfData.mensaje || "PDF generado y abierto exitosamente", "success")
+      } else {
+        // Si no se generó correctamente, mostrar error
+        showNotification(pdfData.mensaje || "No se pudo generar el PDF", "error")
+      }
     } catch (error: any) {
-      showNotification("Error al descargar el PDF", "error")
+      console.error("Error al generar PDF:", error)
+      showNotification(`Error al generar el PDF: ${error.message}`, "error")
+    }
+  }
+
+  const handleDescargarPDF = async (id: number) => {
+    try {
+      showNotification("Obteniendo PDF...", "info")
+      const pdfData = await entrevistasAPI.descargarPDF(id)
+      
+      console.log("PDF Data recibida:", pdfData)
+      
+            if (pdfData.file_url) {
+      
+      // La URL ya viene completa desde el backend
+      const fullUrl = pdfData.file_url
+      console.log("Abriendo URL del PDF:", fullUrl)
+      
+      // Verificar si la URL es accesible
+      try {
+        const response = await fetch(fullUrl, { method: 'HEAD' })
+        if (!response.ok) {
+          throw new Error(`URL no accesible: ${response.status}`)
+        }
+        console.log("URL verificada correctamente")
+      } catch (fetchError) {
+        console.warn("No se pudo verificar la URL:", fetchError)
+        // Continuar de todas formas
+      }
+      
+      // Intentar abrir en nueva pestaña
+      const newWindow = window.open(fullUrl, '_blank')
+      
+      // Si la ventana se bloqueó o no se abrió, ofrecer descarga
+      if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+        showNotification("Ventana bloqueada, descargando PDF...", "info")
+        const link = document.createElement("a")
+        link.href = fullUrl
+        link.download = `entrevista_${id}.pdf`
+        link.target = "_blank"
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        showNotification("PDF descargado exitosamente", "success")
+      } else {
+        showNotification(pdfData.mensaje || "PDF abierto exitosamente", "success")
+      }
+          } else {
+        showNotification(pdfData.mensaje || "No se pudo obtener el PDF", "error")
+      }
+    } catch (error: any) {
+      console.error("Error al obtener PDF:", error)
+      showNotification(`Error al obtener el PDF: ${error.message}`, "error")
     }
   }
 
@@ -149,13 +213,19 @@ export default function EntrevistasPage() {
       const nuevasEstadisticas = await entrevistasAPI.obtenerEstadisticas(
         entrevistas.map((e) => (e.id === id ? { ...e, ...updated } : e)),
       )
-      setEstadisticas(nuevasEstadisticas)
+            setEstadisticas(nuevasEstadisticas)
     } catch (error: any) {
-      showNotification(
-        "Error al actualizar el estado del donante: " + (error?.message ?? ""),
-        "error",
-      )
+      showNotification(`Error: ${error.message}`, "error")
     }
+  }
+
+  const handleAutorizarEntrevista = (entrevista: EntrevistaDonante) => {
+    setEntrevistaParaAutorizar(entrevista)
+    setModalAutorizacion(true)
+  }
+
+  const handleEstadoCambiado = () => {
+    cargarDatos()
   }
 
   return (
@@ -268,30 +338,31 @@ export default function EntrevistasPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {/* Botón para aceptar donante */}
+                        {/* Botón para autorizar/rechazar entrevista */}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleActualizarEstadoDonante(e.id, true)}
-                          title="Aceptar donante"
+                          onClick={() => handleAutorizarEntrevista(e)}
+                          title="Autorizar/Rechazar Entrevista"
+                          disabled={e.estado === "aceptado" || e.estado === "rechazado"}
                         >
-                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <CheckCircle className="h-4 w-4 text-blue-600" />
                         </Button>
-                        {/* Botón para rechazar donante */}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleActualizarEstadoDonante(e.id, false)}
-                          title="Rechazar donante"
+                          onClick={() => handleGenerarPDF(e.id)}
+                          title="Generar y Ver PDF"
                         >
-                          <XCircle className="h-4 w-4 text-red-600" />
+                          <FileText className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDescargarPDF(e.id)}
+                          title="Ver PDF"
                         >
-                          <FileDown className="h-4 w-4" />
+                          <Download className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -309,19 +380,26 @@ export default function EntrevistasPage() {
             <DialogTitle className="flex items-center justify-between">
               <span>Detalles de la Entrevista</span>
               {entrevistaSeleccionada && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleDescargarPDF(
-                      entrevistaSeleccionada.id,
-                    )
-                  }
-                  className="flex items-center gap-2"
-                >
-                  <FileDown className="h-4 w-4" />
-                  Descargar PDF
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleGenerarPDF(entrevistaSeleccionada.id)}
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Generar y Ver PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDescargarPDF(entrevistaSeleccionada.id)}
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Ver PDF
+                  </Button>
+                </div>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -520,6 +598,14 @@ export default function EntrevistasPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Autorización/Rechazo */}
+      <AutorizarEntrevistaDialog
+        open={modalAutorizacion}
+        onClose={() => setModalAutorizacion(false)}
+        entrevista={entrevistaParaAutorizar}
+        onEstadoCambiado={handleEstadoCambiado}
+      />
     </PageLayout>
   )
 }

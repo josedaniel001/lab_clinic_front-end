@@ -59,6 +59,7 @@
     "input-otp": "1.4.1",
     "jspdf": "latest",
     "jspdf-autotable": "latest",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.454.0",
     "luxon": "latest",
     "moment": "latest",

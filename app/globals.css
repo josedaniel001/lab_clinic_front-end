@@ -439,50 +439,89 @@ select,
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
 }
 
-/* Estilos para el escáner QR */
-#qr-reader {
+/* Estilos para el escáner QR personalizado */
+.qr-scanner-container {
   width: 100% !important;
   min-height: 300px !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
 }
 
-#qr-reader__scan_region {
-  background: transparent !important;
+.qr-scanner-video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 8px !important;
+  background-color: #000 !important;
+  display: block !important;
 }
 
-#qr-reader__scan_region > img {
-  display: none !important;
+.qr-scanner-canvas {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
 }
 
-#qr-reader__camera_selection {
-  display: none !important;
+.qr-scanner-overlay {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  pointer-events: none !important;
 }
 
-#qr-reader__dashboard {
-  padding: 10px !important;
-}
-
-#qr-reader__dashboard_section {
-  margin-bottom: 10px !important;
-}
-
-#qr-reader__dashboard_section_csr {
-  display: none !important;
-}
-
-/* Estilos para el marco de escaneo */
-#qr-reader__scan_region > div {
+.qr-scanner-frame {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 256px !important;
+  height: 256px !important;
   border: 2px solid #3b82f6 !important;
   border-radius: 8px !important;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.3) !important;
+  pointer-events: none !important;
+}
+
+.qr-scanner-frame::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -2px !important;
+  left: -2px !important;
+  right: -2px !important;
+  bottom: -2px !important;
+  border: 2px solid rgba(59, 130, 246, 0.5) !important;
+  border-radius: 8px !important;
+  animation: pulse 2s infinite !important;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 /* Responsive para móviles */
 @media (max-width: 768px) {
-  #qr-reader {
+  .qr-scanner-container {
     min-height: 250px !important;
   }
   
-  #qr-reader__scan_region > div {
+  .qr-scanner-frame {
     width: 200px !important;
     height: 200px !important;
   }
